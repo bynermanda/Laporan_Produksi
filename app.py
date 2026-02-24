@@ -82,7 +82,7 @@ if submit:
         "ACT": act,
         "Prod_%": f"{prod_percent:.1f}%",
         "NG_Total": total_ng,
-        "Rasio_NG": f"{rasio_ng:.3f}%",
+        "Rasio_NG": f"{rasio_ng:.2f}%",
         "AP": ap_note
     }])
     
@@ -98,4 +98,5 @@ if submit:
         conn.update(spreadsheet=URL_KITA, worksheet="Sheet1", data=updated_df)
         st.success("✅ Data berhasil disimpan!")
     except Exception as e:
+
         st.error(f"Gagal menyimpan data: {e}")
