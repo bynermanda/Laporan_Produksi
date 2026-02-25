@@ -29,7 +29,6 @@ nama_operator = st.sidebar.text_input("Nama Lengkap", placeholder="Masukkan Nama
 nip_operator = st.sidebar.text_input("NIP / No. Karyawan", placeholder="Masukkan NIP")
 
 # 1. Koneksi ke Google Sheets (Database & Endpoint)
-# Pastikan URL sheet ada di .streamlit/secrets.toml atau Environment Variables Render
 conn = st.connection("gsheets", type=GSheetsConnection)
 try:
     # Baca Master Data
@@ -40,7 +39,7 @@ except Exception as e:
     list_no = ["Data Kosong"]
 
 # --- BAGIAN 2: LOGIKA PENCARIAN OTOMATIS (DI LUAR FORM) ---
-# Tampilkan pilihan NO di luar form agar aplikasi bisa "refresh" nilai SPH & Part Name seketika saat dipilih
+# Tampilkan pilihan NO atau Proses Produksi berdasarkan master_df.
 st.subheader("Pilih Item Produksi")
 proses_terpilih = st.selectbox("Pilih NO / Proses Produksi", options=list_no)
 
@@ -53,7 +52,7 @@ else:
     sph_default = 0
     part_name_default = ""
 
-# --- BAGIAN 3: FORM INPUT PRODUKSI ---
+# --- BAGIAN 3: FORM INPUT PRODUKSI ATAU UI---
 with st.form("input_produksi_form"):
     st.info(f"Part Name: **{part_name_default}**") # Menampilkan info part yang terpilih
     
@@ -85,61 +84,61 @@ with st.form("input_produksi_form"):
 
 # --- BAGIAN 4: LOGIKA PENGIRIMAN DATA ---
 if submit:
-    # Hitung durasi kerja dalam jam (desimal)
+    # 1. Hitung durasi kerja
     waktu_mulai_dt = datetime.combine(date.today(), waktu_mulai)
     waktu_selesai_dt = datetime.combine(date.today(), waktu_selesai)
     if waktu_selesai_dt < waktu_mulai_dt:
         waktu_selesai_dt += timedelta(days=1)
     durasi = waktu_selesai_dt - waktu_mulai_dt
-    total_jam = durasi.total_seconds() / 3600  # Mengubah detik ke jam (desimal)
-    
-    # Agar NIP dengan Pola: 2 angka + titik + 6 angka
+    total_jam = durasi.total_seconds() / 3600 # Konversi ke jam (desimal)
+
+    # 2. VALIDASI (Gunakan if-return style/st.stop() agar lebih bersih)
     pola_nip = r"^\d{2}\.\d{6}$"
-    if re.match(pola_nip, nip_operator):
-        # Jika NIP sudah benar, lanjutkan simpan data
-        st.success("NIP Valid!")
-    else:
-        st.error("NIP tidak valid! Harus 2 angka, titik, lalu 6 angka.")
-        st.stop()  # Hentikan proses jika NIP tidak valid
-    
-    if not nama_operator or not nip_operator:
-        st.error("❌ GAGAL SIMPAN: Nama dan NIP Operator wajib diisi di menu samping (sidebar)!")
-    
-    elif act <= 0:
-        st.warning("⚠️ PERINGATAN: Jumlah ACT belum diisi.")
-        
-    elif line_produksi == "":
-        st.error("❌ GAGAL: Line Produksi harus dipilih/diisi.")
 
-    elif konfirmasi == False:
-        st.warning("⚠️ PERINGATAN: Silakan centang kotak konfirmasi sebelum submit.")
-
-    else:
-        # Kalkulasi Otomatis
-        total_ng = ng_setting + ng_gonogo + ng_dll + ng_coil
-        prod_percent = (act / sph * 100) if sph > 0 else 0
-        rasio_ng = (total_ng / act * 100) if act > 0 else 0
-
-        #Kirim data jika berhasil
-        new_data = pd.DataFrame([{
-            "Tanggal": datetime.now().strftime('%Y-%m-%d'),
-            "Nama_Operator": nama_operator,
-            "NIP": nip_operator,
-            "Shift": shift,
-            "Proses": proses_terpilih, # Menggunakan variabel proses_terpilih
-            "Part_Name": part_name_default,
-            "Jam": f"{waktu_mulai.strftime('%H:%M')} - {waktu_selesai.strftime('%H:%M')}",
-            "Line_Produksi": line_produksi,
-            "SPH": sph_default, # Menggunakan sph_default yang otomatis terisi
-            "ACT": act,
-            "Prod_%": f"{prod_percent:.1f}%",
-            "NG_Total": total_ng,
-            "Rasio_NG": f"{rasio_ng:.2f}%",
-            "AP": ap_note,
-            "Total Jam": f"{total_jam:.2f}"
-    }])
+    if not nama_operator or not nip_operator: # Validasi wajib isi nama dan NIP
+        st.error("❌ Nama dan NIP Operator wajib diisi!")
+        st.stop()
     
-    # Tambahkan kode conn.update Anda di sini
+    if not re.match(pola_nip, nip_operator): # Validasi format NIP
+        st.error("❌ NIP tidak valid! Harus format XX.XXXXXX (Contoh: 05.251107)")
+        st.stop()
+
+    if act <= 0: # Validasi ACT harus lebih dari 0
+        st.warning("⚠️ Jumlah ACT belum diisi.")
+        st.stop()
+
+    if line_produksi == "": # Validasi Line Produksi tidak boleh kosong
+        st.error("❌ Line Produksi harus dipilih.")
+        st.stop()
+
+    if not konfirmasi: # Validasi konfirmasi centang
+        st.warning("⚠️ Silakan centang kotak konfirmasi sebelum submit.")
+        st.stop()
+
+    # 3. KALKULASI (Hanya jalan jika lolos semua validasi di atas)
+    total_ng = ng_setting + ng_gonogo + ng_dll + ng_coil
+    prod_percent = (act / sph * 100) if sph > 0 else 0
+    rasio_ng = (total_ng / act * 100) if act > 0 else 0
+
+    # 4. BUAT DATAFRAME
+    new_data = pd.DataFrame([{
+        "Tanggal": datetime.now().strftime('%Y-%m-%d'),
+        "Nama_Operator": nama_operator,
+        "NIP": nip_operator,
+        "Shift": shift,
+        "Proses": proses_terpilih,
+        "Part_Name": part_name_default,
+        "Jam": f"{waktu_mulai.strftime('%H:%M')} - {waktu_selesai.strftime('%H:%M')}",
+        "Line_Produksi": line_produksi,
+        "SPH": sph_default,
+        "ACT": act,
+        "Prod_%": f"{prod_percent:.1f}%",
+        "NG_Total": total_ng,
+        "Rasio_NG": f"{rasio_ng:.2f}%",
+        "AP": ap_note,
+        "Total Jam": f"{total_jam:.2f}"
+    }]) 
+    
     try:
         # Baca data lama
         existing_data = conn.read(spreadsheet=URL_KITA, worksheet="Sheet1", ttl=0)
