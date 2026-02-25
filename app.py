@@ -124,7 +124,7 @@ if submit:
     new_data = pd.DataFrame([{
         "Tanggal": datetime.now().strftime('%Y-%m-%d'),
         "Nama_Operator": nama_operator,
-        "NIP": nip_operator,
+        "NIP": nip_operator.title(),
         "Shift": shift,
         "Proses": proses_terpilih,
         "Part_Name": part_name_default,
@@ -152,3 +152,4 @@ if submit:
         st.table(new_data)
     except Exception as e:
         st.error(f"Gagal menyimpan data: {e}")
+
