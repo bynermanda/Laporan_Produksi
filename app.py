@@ -1,17 +1,21 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import time
+
+# Fungsi untuk mendapatkan waktu WIB
+def get_waktu_wib():
+    return datetime.now(timezone.utc) + timedelta(hours=7)
 
 # --- KONFIGURASI ---
 st.set_page_config(page_title="Sistem Scan Produksi", layout="wide")
 URL_KITA = "https://docs.google.com/spreadsheets/d/1uDmbbLhFsMdGSnozbRBMwEDPP2T20HqpEnJGYd2P390/edit"
 
 if 'waktu_end' not in st.session_state:
-    st.session_state.waktu_end = datetime.now()
+    st.session_state.waktu_end = get_waktu_wib()
 if 'waktu_start' not in st.session_state:
-    st.session_state.waktu_start = datetime.now()
+    st.session_state.waktu_start = get_waktu_wib()
 
 # Inisialisasi Koneksi
 conn = st.connection("gsheets", type=GSheetsConnection)
@@ -37,6 +41,15 @@ def simpan_ke_sheet(data_dict, tipe):
         df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
         
         if tipe == "START":
+            if tipe == "START":
+            # CEK TERAKHIR: Apakah di detik ini sudah ada nama + part + status START?
+                double_check = df_proses[(df_proses['Nama'] == data_dict['Nama']) & 
+                                     (df_proses['Status'] == 'START')]
+            
+            if not double_check.empty:
+                st.error("⚠️ Data START sudah ada di database. Batalkan manual jika salah.")
+                return False
+            
             # LOGIKA START: Tambah baris baru seperti biasa
             new_row = pd.DataFrame([data_dict])
             updated_df = pd.concat([df_proses, new_row], ignore_index=True)
@@ -93,24 +106,43 @@ def handle_scan():
     part_no_scanned = raw_scan.split(';')[0].strip()
 
     match = main_df[main_df['Part_No'] == part_no_scanned]
-
-    if not match.empty:
+    # CEK: Apakah operator ini masih punya pekerjaan yang belum selesai? (Status START tapi belum FINISH)
+    df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+    ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
+        
+    if not ongoing.empty:
+        # Jika ada proses yang masih jalan
         if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-            st.session_state.available_processes = match.to_dict('records')
-            st.session_state.status_kerja = "SELECTING_PROCESS"
-            st.toast(f"✅ Part {part_no_scanned} ditemukan. Pilih urutan!")
+            st.error(f"⚠️ Anda masih punya proses pending (Part: {ongoing.iloc[-1]['Part_No']}). Selesaikan dulu!")
+            st.session_state.barcode_input = ""
+            return
+        
+        # Jika statusnya RUNNING, baru boleh lanjut untuk scan FINISH
+        if st.session_state.get('status_kerja') == "RUNNING":
+            if part_no_scanned == st.session_state.current_part['part_no']:
+                st.session_state.status_kerja = "FINISHING"
+                st.session_state.waktu_end = get_waktu_wib()
+                st.toast("🏁 Scan Finish Berhasil!")
+            else:
+                st.error("❌ Barcode tidak sama dengan Part yang sedang jalan!")
+    else:
+        if not match.empty:
+            if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
+                st.session_state.available_processes = match.to_dict('records')
+                st.session_state.status_kerja = "SELECTING_PROCESS"
+                st.toast(f"✅ Part {part_no_scanned} ditemukan. Pilih urutan!")
         
         # CEK: Jika saat ini RUNNING, berarti scan barcode yang sama untuk FINISH
         elif st.session_state.get('status_kerja') == "RUNNING":
             # Pastikan yang di-scan adalah Part_No yang sama dengan yang sedang jalan
             if part_no_scanned == st.session_state.current_part['part_no']:
                 st.session_state.status_kerja = "FINISHING"
-                st.session_state.waktu_end = datetime.now()
+                st.session_state.waktu_end = get_waktu_wib()
                 st.toast("🏁 Scan Finish Berhasil!")
             else:
                 st.error("❌ Barcode berbeda dengan Part yang sedang berjalan!")
-    else:
-        st.error(f"❌ Part No {part_no_scanned} tidak terdaftar di MainData!")
+        else:
+            st.error(f"❌ Part No {part_no_scanned} tidak terdaftar di MainData!")
     
     # Kosongkan input scanner
     st.session_state.barcode_input = ""
@@ -148,14 +180,14 @@ else:
                     "urutan_proses": detail['URUTAN']
                 }
                 st.session_state.status_kerja = "RUNNING"
-                st.session_state.waktu_start = datetime.now()
+                st.session_state.waktu_start = get_waktu_wib()
                 st.rerun()
 
     # --- 3. KONDISI: SEDANG BERJALAN (START) ---
     elif st.session_state.get('status_kerja') == "RUNNING":
         dp = st.session_state.get('current_part')
         if dp:
-            waktu_sekarang = datetime.now()
+            waktu_sekarang = get_waktu_wib()
             durasi_live = waktu_sekarang - st.session_state.waktu_start
             menit_live = int(durasi_live.total_seconds() / 60)
             jam_live = round(durasi_live.total_seconds() / 3600, 2)
@@ -167,9 +199,13 @@ else:
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
 
+            if "is_submitting" not in st.session_state:
+                st.session_state.is_submitting = False
             if st.button("🚀 Konfirmasi Kirim Start", use_container_width=True):
+                st.session_state.is_submitting = True
+
                 data_start = {
-                    "Tanggal": datetime.now().strftime("%Y-%m-%d"),
+                    "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
                     "Nama": nama_karyawan,
                     "Part_No": dp['part_no'],
                     "Part_Name": dp['part_name'],
@@ -180,11 +216,14 @@ else:
                     "Waktu_Selesai": "",
                     "ACT": 0, "NG": 0, "Status": "START"
                 }
-                if simpan_ke_sheet(data_start, "START"):
-                    st.balloons()
-                    st.success("✅ Produksi Dimulai!")
-                    time.sleep(1)
-                    st.rerun()
+                with st.spinner("Sedang mencatat ke sistem..."):
+                    if simpan_ke_sheet(data_start, "START"):
+                        st.balloons()
+                        st.success("✅ Produksi Dimulai!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.session_state.is_submitting = False
 
     # --- 4. KONDISI: SELESAI (FINISH) ---
     elif st.session_state.get('status_kerja') == "FINISHING":
@@ -192,8 +231,8 @@ else:
         if dp:
             st.subheader(f"📝 Laporan Akhir: {dp['part_name']}")
             
-            waktu_start = st.session_state.get('waktu_start', datetime.now())
-            waktu_end = st.session_state.get('waktu_end', datetime.now())
+            waktu_start = st.session_state.get('waktu_start', get_waktu_wib())
+            waktu_end = st.session_state.get('waktu_end', get_waktu_wib())
             durasi = waktu_end - waktu_start
             jam_total = round(durasi.total_seconds() / 3600, 2)
 
@@ -261,7 +300,7 @@ else:
                     if baris_input_abnormal:
                         for item in baris_input_abnormal:
                             row_ab = {
-                                "Tanggal": datetime.now().strftime("%Y-%m-%d"),
+                                "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
                                 "Mesin": dp.get('line', ''),
                                 "Part_No": dp.get('part_no', ''),
                                 "Model": dp.get('model', ''),
@@ -284,12 +323,28 @@ else:
                         time.sleep(2)
                         st.rerun()
 
-    # Tombol Reset Manual
-    if st.button("Batal / Reset Scanner", type="secondary"):
-        for k in ['status_kerja', 'current_part', 'data_sph_terkirim']:
-            if k in st.session_state: del st.session_state[k]
-        st.rerun()
-
-
-
-
+    #--- 5. KONDISI: IDLE (AWAL) atau automatic time --- 
+    if st.session_state.get('status_kerja') == "RUNNING":
+        st.divider()
+        col_ref, col_res = st.columns(2)
+    
+        with col_ref:
+            if st.button("🔄 Perbarui Waktu", use_container_width=True):
+                st.rerun()
+                st.caption("⏱️ Klik untuk update durasi berjalan")
+        
+        with col_res:
+            if st.button("🚫 Batal / Reset Scanner", type="secondary", use_container_width=True):
+                keys_to_clean = ['status_kerja', 'current_part', 'data_sph_terkirim', 'available_processes', 'waktu_start', 'waktu_end']
+                for k in keys_to_clean:
+                    if k in st.session_state: 
+                        del st.session_state[k]
+                st.rerun()
+    else:
+    # Jika tidak dalam kondisi RUNNING, cukup tampilkan tombol Reset saja
+        if st.button("Batal / Reset Scanner", type="secondary"):
+            keys_to_clean = ['status_kerja', 'current_part', 'data_sph_terkirim', 'available_processes']
+            for k in keys_to_clean:
+                if k in st.session_state: 
+                    del st.session_state[k]
+            st.rerun()
