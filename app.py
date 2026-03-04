@@ -4,10 +4,6 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 import time
 
-window.onbeforeunload = function() {
-    return "Apakah Anda yakin ingin meninggalkan halaman ini?";
-};
-
 # Fungsi untuk mendapatkan waktu WIB
 def get_waktu_wib():
     return datetime.now(timezone.utc) + timedelta(hours=7)
@@ -352,4 +348,5 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
+
 
