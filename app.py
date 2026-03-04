@@ -4,6 +4,10 @@ import pandas as pd
 from datetime import datetime
 import time
 
+#Automatic Refresh Time
+if st.session_state.get('status_kerja') == "RUNNING":
+    time.sleep(1) # Memberikan jeda sedikit agar tidak terlalu berat
+    st.empty()    # Trigger refresh ringan
 # --- KONFIGURASI ---
 st.set_page_config(page_title="Sistem Scan Produksi", layout="wide")
 URL_KITA = "https://docs.google.com/spreadsheets/d/1uDmbbLhFsMdGSnozbRBMwEDPP2T20HqpEnJGYd2P390/edit"
@@ -153,8 +157,6 @@ else:
 
     # --- 3. KONDISI: SEDANG BERJALAN (START) ---
     elif st.session_state.get('status_kerja') == "RUNNING":
-        time.sleep(1) # Memberikan jeda sedikit agar tidak terlalu berat
-        st.empty()
         dp = st.session_state.get('current_part')
         if dp:
             waktu_sekarang = datetime.now()
@@ -291,5 +293,6 @@ else:
         for k in ['status_kerja', 'current_part', 'data_sph_terkirim']:
             if k in st.session_state: del st.session_state[k]
         st.rerun()
+
 
 
