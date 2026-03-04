@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 import time
@@ -359,6 +360,7 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
+
 
 
 
