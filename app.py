@@ -102,6 +102,8 @@ def handle_scan():
         
         # CEK: Jika saat ini RUNNING, berarti scan barcode yang sama untuk FINISH
         elif st.session_state.get('status_kerja') == "RUNNING":
+            time.sleep(1) # Memberikan jeda sedikit agar tidak terlalu berat
+            st.empty()
             # Pastikan yang di-scan adalah Part_No yang sama dengan yang sedang jalan
             if part_no_scanned == st.session_state.current_part['part_no']:
                 st.session_state.status_kerja = "FINISHING"
@@ -289,3 +291,4 @@ else:
         for k in ['status_kerja', 'current_part', 'data_sph_terkirim']:
             if k in st.session_state: del st.session_state[k]
         st.rerun()
+
