@@ -1,27 +1,63 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 import streamlit.components.v1 as components
+from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+import pytz
 from datetime import datetime, timedelta, timezone
 import time
 
+# SETUP THEME LANGSUNG DI KODE
+st.set_page_config(page_title="Laporan Produksi Press PT. ISI", layout="wide")
+
+# Injeksi JavaScript untuk mencegah refresh tak sengaja
 components.html(
     """
     <script>
-    window.onbeforeunload = function() {
-        return "Apakah Anda yakin ingin meninggalkan halaman ini?";
-    };
+    window.parent.addEventListener('beforeunload', function (e) {
+        // Pesan standar browser (beberapa browser modern mungkin tidak menampilkan teks kustom)
+        var confirmationMessage = 'Data sedang diproses. Jika refresh, sesi scan akan hilang!';
+        (e || window.event).returnValue = confirmationMessage;
+        return confirmationMessage;
+    });
     </script>
     """,
     height=0,
 )
 
-# Fungsi untuk mendapatkan waktu WIB
+# Suntik CSS untuk warna
+st.markdown("""
+    <style>
+    /* 1. Warna Background Utama */
+    .stApp {
+        background-color: #261ad6; /* Ganti hitam */
+    }
+    
+    /* 2. Warna Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #ff0909; /* Ganti biru */
+    }
+
+    /* 3. Warna Semua Teks */
+    h1, h2, h3, p, span, label {
+        color: #ffffff !important;
+    }
+
+    /* 4. Warna Tombol Utama (Primary) */
+    div.stButton > button {
+        background-color: #00FF00 !important; /* Warna Hijau */
+        color: black !important;
+        border-radius: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 def get_waktu_wib():
-    return datetime.now(timezone.utc) + timedelta(hours=7)
+    # Mengambil waktu standar Asia/Jakarta dari database zona waktu pusat
+    tz_jkt = pytz.timezone('Asia/Jakarta')
+    return datetime.now(tz_jkt).replace(tzinfo=None)
 
 # --- KONFIGURASI ---
-st.set_page_config(page_title="Sistem Scan Produksi", layout="wide")
+st.set_page_config(page_title="Laporan Produksi Press PT ISI", layout="wide")
 URL_KITA = "https://docs.google.com/spreadsheets/d/1uDmbbLhFsMdGSnozbRBMwEDPP2T20HqpEnJGYd2P390/edit"
 
 if 'waktu_end' not in st.session_state:
@@ -125,34 +161,45 @@ def handle_scan():
     if not ongoing.empty:
         # Jika ada proses yang masih jalan
         if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-            st.error(f"⚠️ Anda masih punya proses pending (Part: {ongoing.iloc[-1]['Part_No']}). Selesaikan dulu!")
+            row_terakhir = ongoing.iloc[-1]
+            p_no = row_terakhir['Part_No']
+        # 1. Cari standar dari Main Data
+            match_main = main_df[main_df['Part_No'] == p_no]
+
+        # 2. Rekonstruksi data part yang sedang dikerjakan
+            st.session_state.current_part = {
+                'part_no': row_terakhir['Part_No'],
+                'part_name': row_terakhir['Part_Name'],
+                'model': row_terakhir['Model'],
+                'urutan_proses': row_terakhir['Urutan_Proses'],
+                'line': row_terakhir['Line'],
+                'sec_pcs': match_main.iloc[0]['SEC /PCS'] if not match_main.empty else 0
+            }
+            # 3. Pulihkan Waktu Start
+            dt_str = f"{row_terakhir['Tanggal']} {row_terakhir['Waktu_Mulai']}"
+            st.session_state.waktu_start = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            st.session_state.status_kerja = "RUNNING" # Pulihkan ke Running
+            st.success(f"🔄 Sesi {p_no} dipulihkan!")
             st.session_state.barcode_input = ""
-            return
+            st.rerun()
         
         # Jika statusnya RUNNING, baru boleh lanjut untuk scan FINISH
-        if st.session_state.get('status_kerja') == "RUNNING":
-            if part_no_scanned == st.session_state.current_part['part_no']:
-                st.session_state.status_kerja = "FINISHING"
-                st.session_state.waktu_end = get_waktu_wib()
-                st.toast("🏁 Scan Finish Berhasil!")
-            else:
-                st.error("❌ Barcode tidak sama dengan Part yang sedang jalan!")
-    else:
+    if st.session_state.get('status_kerja') == "RUNNING":
+        if part_no_scanned == st.session_state.current_part['part_no']:
+            st.session_state.status_kerja = "FINISHING"
+            st.session_state.waktu_end = get_waktu_wib()
+            st.toast("🏁 Scan Finish Berhasil!")
+            st.session_state.barcode_input = ""
+            st.rerun()
+        else:
+            st.error(f"❌ Barcode ({part_no_scanned}) berbeda dengan Part yang sedang jalan!")
+            return # Berhenti di sini jika salah scan part
+    
+    if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
+        match = main_df[main_df['Part_No'] == part_no_scanned]
         if not match.empty:
-            if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-                st.session_state.available_processes = match.to_dict('records')
-                st.session_state.status_kerja = "SELECTING_PROCESS"
-                st.toast(f"✅ Part {part_no_scanned} ditemukan. Pilih urutan!")
-        
-        # CEK: Jika saat ini RUNNING, berarti scan barcode yang sama untuk FINISH
-        elif st.session_state.get('status_kerja') == "RUNNING":
-            # Pastikan yang di-scan adalah Part_No yang sama dengan yang sedang jalan
-            if part_no_scanned == st.session_state.current_part['part_no']:
-                st.session_state.status_kerja = "FINISHING"
-                st.session_state.waktu_end = get_waktu_wib()
-                st.toast("🏁 Scan Finish Berhasil!")
-            else:
-                st.error("❌ Barcode berbeda dengan Part yang sedang berjalan!")
+            st.session_state.available_processes = match.to_dict('records')
+            st.session_state.status_kerja = "SELECTING_PROCESS"
         else:
             st.error(f"❌ Part No {part_no_scanned} tidak terdaftar di MainData!")
     
@@ -162,6 +209,8 @@ def handle_scan():
 # --- TAMPILAN SIDEBAR ---
 st.sidebar.title("👤 Operator")
 nama_karyawan = st.sidebar.text_input("Nama Karyawan", placeholder="Scan Nama Karyawan")
+list_line = main_df['LINE'].unique().tolist() if 'LINE' in main_df.columns else []
+actual_line = st.sidebar.selectbox("Line", options=list_line)
 
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
@@ -200,7 +249,7 @@ else:
         dp = st.session_state.get('current_part')
         if dp:
             waktu_sekarang = get_waktu_wib()
-            durasi_live = waktu_sekarang - st.session_state.waktu_start
+            durasi_live = waktu_sekarang.replace(tzinfo=None) - st.session_state.waktu_start.replace(tzinfo=None)
             menit_live = int(durasi_live.total_seconds() / 60)
             jam_live = round(durasi_live.total_seconds() / 3600, 2)
             st.info(f"⚡ **Proses Berjalan:** {dp['part_name']} | sec_pcs : {dp['sec_pcs']} | {dp['model']}")
@@ -226,6 +275,7 @@ else:
                     "Urutan_Proses": dp['urutan_proses'],
                     "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
                     "Waktu_Selesai": "",
+                    "Actual_Line": actual_line,
                     "ACT": 0, "NG": 0, "Status": "START"
                 }
                 with st.spinner("Sedang mencatat ke sistem..."):
@@ -245,17 +295,18 @@ else:
             
             waktu_start = st.session_state.get('waktu_start', get_waktu_wib())
             waktu_end = st.session_state.get('waktu_end', get_waktu_wib())
-            durasi = waktu_end - waktu_start
-            jam_total = round(durasi.total_seconds() / 3600, 2)
+            durasi = waktu_end.replace(tzinfo=None) - waktu_start.replace(tzinfo=None)
+            jam_total = round(durasi.total_seconds() / 60, 2)
 
             c1, c2, c3 = st.columns(3)
             act = c1.number_input("Jumlah ACT", min_value=0, step=1)
             ng = c2.number_input("Jumlah NG", min_value=0, step=1)
-            c3.metric("Durasi", f"{jam_total} Jam")
+            c3.metric("Durasi", f"{jam_total} Menit", delta=f"{round(jam_total/60, 2)} Jam")
 
             # Kalkulasi SPH
+            std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
             standar_input = (dp['sec_pcs'] * act) / 60 if act > 0 else 0
-            persen_prod = (standar_input / (jam_total * 60) * 100) if jam_total > 0 else 0
+            persen_prod = round((standar_input / jam_total) * 100, 2) if jam_total > 0 and std_dari_state > 0  else 0.0
 
             if not st.session_state.get('data_sph_terkirim'):
                 if st.button("🚀 Kirim Data SPH", use_container_width=True):
@@ -268,9 +319,9 @@ else:
                             "ACT": act,
                             "NG": ng,
                             "Standar Input": standar_input,
-                            "%_Prod": f"{persen_prod:.2f}%",
+                            "%_Prod":f"{persen_prod:.2f}%",
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
-                            "Total_Jam": jam_total,
+                            "Total_Jam": f"{round(jam_total/60, 2)}",
                             "Status": "FINISH"
                         }
                         if simpan_ke_sheet(data_finish, "FINISH"):
@@ -360,7 +411,3 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
-
-
-
-
