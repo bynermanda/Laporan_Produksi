@@ -140,7 +140,7 @@ def simpan_ke_sheet(data_dict, tipe):
 
                 
     except Exception as e:
-        st.error(f"Gagal memproses data: {e}")
+        st.error(f"Gagal memproses data, Catat Laporan dan Lapor Admin: {e}")
         return False
 
 # --- LOGIKA PROSES SCAN ---
@@ -411,3 +411,4 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
+
