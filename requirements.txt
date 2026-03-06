@@ -1,9 +1,5 @@
-streamlit>=1.30.0
-streamlit-gsheets
-pandas>=2.0.0
-pyarrow>=14.0.1
-pillow>=10.2.0
-urllib3>=1.26.19
-protobuf>=4.25.8
-requests>=2.32.2
-numpy>=1.22.2
+streamlit
+pandas
+st-gsheets-connection
+pytz
+gspread
