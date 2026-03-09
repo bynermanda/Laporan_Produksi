@@ -1,3 +1,6 @@
+## File: test_app.py merupakan revisi dari app.py
+## adanya penambahan fitur lost time, perbaikan logika kalkulasi, dan penyesuaian tampilan metrik di bagian akhir laporan SPH.
+
 import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_gsheets import GSheetsConnection
@@ -307,6 +310,7 @@ else:
             std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
             standar_input = (dp['sec_pcs'] * act) / 60 if act > 0 else 0
             persen_prod = round((standar_input / jam_total) * 100, 2) if jam_total > 0 and std_dari_state > 0  else 0.0
+            lost_time = max(0, (jam_total) - standar_input) if act > 0 and std_dari_state > 0 else 0.0
 
             if not st.session_state.get('data_sph_terkirim'):
                 if st.button("🚀 Kirim Data SPH", use_container_width=True):
@@ -322,7 +326,8 @@ else:
                             "%_Prod":f"{persen_prod:.2f}%",
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
                             "Total_Jam": f"{round(jam_total/60, 2)}",
-                            "Status": "FINISH"
+                            "Status": "FINISH",
+                            "Lost_Time_Menit": round(lost_time, 2),
                         }
                         if simpan_ke_sheet(data_finish, "FINISH"):
                             st.session_state.data_sph_terkirim = True
@@ -332,6 +337,12 @@ else:
 
             # --- FORM ABNORMAL (Muncul setelah SPH) ---
         if st.session_state.get('data_sph_terkirim'):
+            #Tampilan metrik SPH dan Lost Time
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Persentase Produksi", f"{persen_prod:.2f} %")
+            c2.metric("Lost Time", f"{round(lost_time, 2)} Menit", delta=f"{round(lost_time/60, 2)} Jam")
+            c3.metric("Rasio NG", f"{(ng/act * 100) if act > 0 else 0:.2f} %")
+
             st.divider()
             with st.form("form_abnormal_baru"):
                 st.subheader("⚠️ Input Detail Abnormal")
@@ -411,4 +422,3 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
-
