@@ -226,15 +226,15 @@ def update_aktivitas_kerja(nama, pesan_baru):
         df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
         
         # 2. Cari baris aktif operator tersebut (Check-Out masih kosong)
-        row_idx = get_last_active_row(df_waktu, nama)
+        row_index = get_last_active_row(df_waktu, nama)
         
-        if row_idx:
+        if row_index:
             # Ambil waktu sekarang untuk timestamp aktivitas
             jam_skrg = datetime.now().strftime("%H:%M")
             
-            # Ambil aktivitas lama dari dataframe (indeks di DF adalah row_idx - 2)
+            # Ambil aktivitas lama dari dataframe (indeks di DF adalah row_index - 2)
             # Pastikan kolom 'Aktivitas' ada, jika kosong berikan string kosong
-            aktivitas_sebelumnya = df_waktu.iloc[row_idx-2].get('Aktivitas', "")
+            aktivitas_sebelumnya = df_waktu.iloc[row_index-2].get('Aktivitas', "")
             if pd.isna(aktivitas_sebelumnya): aktivitas_sebelumnya = ""
             
             # Gabungkan pesan (Gunakan pemisah | atau baris baru)
@@ -242,7 +242,7 @@ def update_aktivitas_kerja(nama, pesan_baru):
             catatan_update = f"{aktivitas_sebelumnya}{separator}[{jam_skrg}] {pesan_baru}"
             
             # 3. Update ke Google Sheets (Kolom F adalah kolom Aktivitas)
-            conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", cell=f"F{row_idx}", data=catatan_update)
+            conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", cell=f"F{row_index}", data=catatan_update)
     except Exception as e:
         # Kita gunakan silent error agar proses produksi tidak terhenti hanya karena gagal log aktivitas
         print(f"Error update aktivitas: {e}")
@@ -280,10 +280,10 @@ if nama_karyawan:
     if st.sidebar.button("🔴 Check-Out Sekarang"):
         try:
             df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-            row_idx = get_last_active_row(df_waktu, nama_karyawan)
+            row_index = get_last_active_row(df_waktu, nama_karyawan)
 
             if row_index:
-                idx_pandas = row_idx -2
+                idx_pandas = row_index -2
                 # Ambil waktu sekarang untuk Check-Out
                 jam_in_str = df_waktu.loc[idx_pandas, 'Check-In']
                 tgl_str = df_waktu.loc[idx_pandas, 'Tanggal']
@@ -324,10 +324,26 @@ if nama_karyawan:
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
 
+is_sudah_checkin = False
+
+if nama_karyawan:
+    # Baca data waktu kerja untuk validasi status
+    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+    # Cek apakah ada baris aktif (Check-In ada, Check-Out kosong)
+    status_absen = get_last_active_row(df_waktu, nama_karyawan)
+    
+    if status_absen:
+        is_sudah_checkin = True
+
 if nama_karyawan == "":
     st.warning("⚠️ Mohon Check-In dulu.")
+elif not is_sudah_checkin:
+    # Jika nama sudah diisi tapi belum klik tombol Check-In
+    st.warning(f"⚠️ Halo {nama_karyawan}, Anda belum melakukan Check-In. Silakan klik tombol 'Check-In Sekarang' di sidebar untuk mulai bekerja.")
+    st.info("Kamera scanner akan muncul secara otomatis setelah Anda Check-In.")
 else:
     # --- 1. INPUT BARCODE ---
+    st.success(f"✅ Sesi Aktif: {nama_karyawan} (Sedang Bekerja)")
     st.write("### 📸 Scan Barcode via Kamera HP")
 
     barcode_data = qrcode_scanner(key='scanner')
@@ -335,7 +351,6 @@ else:
         st.success(f"✅ Terdeteksi: {barcode_data}")
         st.session_state.barcode_input = barcode_data
         handle_scan()
-        
     # --- 2. KONDISI: PILIH URUTAN PROSES ---
     if st.session_state.get('status_kerja') == "SELECTING_PROCESS":
         list_line = main_df['LINE'].unique().tolist() if 'LINE' in main_df.columns else []
