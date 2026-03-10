@@ -274,7 +274,7 @@ if nama_karyawan:
                 "Total_Jam": 0,
                 "Aktivitas": "Mulai Shift"
             }])
-            conn.create(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=new_data_df)
+            conn.create(URL_KITA, worksheet="Waktu Kerja", data=new_data_df)
             st.sidebar.success(f"Check-In Berhasil: {jam}")
 
     # Tombol Check-Out
