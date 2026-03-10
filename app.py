@@ -1,5 +1,7 @@
+
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_qrcode_scanner import qrcode_scanner
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import pytz
@@ -142,6 +144,17 @@ def simpan_ke_sheet(data_dict, tipe):
     except Exception as e:
         st.error(f"Gagal memproses data, Catat Laporan dan Lapor Admin: {e}")
         return False
+    
+
+# --- FUNGSI BANTU: CARI BARIS AKTIF TERAKHIR UNTUK CHECK-IN/CHECK-OUT ---
+def get_last_active_row(df, nama):
+    # Cari baris yang Namanya sama DAN kolom 'Check-Out' nya masih kosong/NaN
+    active_rows = df[(df['Nama'] == nama) & (df['Check-Out'].isna() | (df['Check-Out'] == ""))]
+    if not active_rows.empty:
+        # Kembalikan indeks baris terakhir (tambah 2 karena header GSheets + indeks 0)
+        return active_rows.index[-1] + 2
+    return None
+
 
 # --- LOGIKA PROSES SCAN ---
 def handle_scan():
@@ -203,14 +216,76 @@ def handle_scan():
         else:
             st.error(f"❌ Part No {part_no_scanned} tidak terdaftar di MainData!")
     
+    
     # Kosongkan input scanner
     st.session_state.barcode_input = ""
 
+# --- FUNGSI HELPER UNTUK UPDATE SHEET WAKTU KERJA ---
+def update_aktivitas_kerja(nama, pesan_baru):
+    try:
+        # 1. Baca data waktu kerja terbaru
+        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+        
+        # 2. Cari baris aktif operator tersebut (Check-Out masih kosong)
+        row_idx = get_last_active_row(df_waktu, nama)
+        
+        if row_idx:
+            # Ambil waktu sekarang untuk timestamp aktivitas
+            jam_skrg = datetime.now().strftime("%H:%M")
+            
+            # Ambil aktivitas lama dari dataframe (indeks di DF adalah row_idx - 2)
+            # Pastikan kolom 'Aktivitas' ada, jika kosong berikan string kosong
+            aktivitas_sebelumnya = df_waktu.iloc[row_idx-2].get('Aktivitas', "")
+            if pd.isna(aktivitas_sebelumnya): aktivitas_sebelumnya = ""
+            
+            # Gabungkan pesan (Gunakan pemisah | atau baris baru)
+            separator = " | " if aktivitas_sebelumnya != "" else ""
+            catatan_update = f"{aktivitas_sebelumnya}{separator}[{jam_skrg}] {pesan_baru}"
+            
+            # 3. Update ke Google Sheets (Kolom F adalah kolom Aktivitas)
+            conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", cell=f"F{row_idx}", data=catatan_update)
+    except Exception as e:
+        # Kita gunakan silent error agar proses produksi tidak terhenti hanya karena gagal log aktivitas
+        print(f"Error update aktivitas: {e}")
+
+        
 # --- TAMPILAN SIDEBAR ---
 st.sidebar.title("👤 Operator")
-nama_karyawan = st.sidebar.text_input("Nama Karyawan", placeholder="Scan Nama Karyawan")
-list_line = main_df['LINE'].unique().tolist() if 'LINE' in main_df.columns else []
-actual_line = st.sidebar.selectbox("Line", options=list_line)
+nama_karyawan = st.write("### 📸 Scan Barcode via Kamera HP")
+
+if nama_karyawan:
+    st.sidebar.markdown(f"Selamat Bekerja, **{nama_karyawan}**!")
+    
+    # Tombol Check-In
+    if st.sidebar.button("🟢 Check-In Sekarang"):
+        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+        row_index = get_last_active_row(df_waktu, nama_karyawan)
+
+        if row_index:
+            st.sidebar.warning("Anda sudah Check-In sebelumnya!")
+        else:
+            tgl = datetime.now().strftime("%Y-%m-%d")
+            jam = datetime.now().strftime("%H:%M:%S")
+            # Create baris baru: Tanggal, Nama, Check-In, Check-Out(Kosong), Total(0), Aktivitas
+            new_data = [tgl, nama_karyawan, jam, "", 0, "Mulai Shift"]
+            conn.create(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=[new_data])
+            st.sidebar.success(f"Check-In Berhasil: {jam}")
+
+    # Tombol Check-Out
+    if st.sidebar.button("🔴 Check-Out Sekarang"):
+        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+        row_index = get_last_active_row(df_waktu, nama_karyawan)
+        
+        if row_index:
+            jam_out = datetime.now().strftime("%H:%M:%S")
+            # Update kolom D (Check-Out) di baris tersebut
+            conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", cell=f"D{row_index}", data=jam_out)
+            
+            # (Opsional) Hitung Total Jam Kerja di sini jika perlu
+            st.sidebar.error(f"Check-Out Berhasil: {jam_out}")
+            st.balloons()
+        else:
+            st.sidebar.error("Data Check-In tidak ditemukan!")
 
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
@@ -219,10 +294,18 @@ if nama_karyawan == "":
     st.warning("⚠️ Masukkan Nama di sidebar untuk memulai.")
 else:
     # --- 1. INPUT BARCODE ---
-    st.text_input("TEMBAK BARCODE DI SINI", key="barcode_input", on_change=handle_scan)
+    st.write("### 📸 Scan Barcode via Kamera HP")
 
+    barcode_data = qrcode_scanner(key='scanner')
+    if barcode_data:
+        st.success(f"✅ Terdeteksi: {barcode_data}")
+        st.session_state.barcode_input = barcode_data
+        handle_scan()
+        
     # --- 2. KONDISI: PILIH URUTAN PROSES ---
     if st.session_state.get('status_kerja') == "SELECTING_PROCESS":
+        list_line = main_df['LINE'].unique().tolist() if 'LINE' in main_df.columns else []
+        actual_line = st.sidebar.selectbox("Line", options=list_line)
         st.subheader("🔍 Pilih Urutan Proses")
         data_pilihan = st.session_state.get('available_processes', [])
         
@@ -238,6 +321,7 @@ else:
                     "model": detail['MODEL'],
                     "sec_pcs": detail['SEC /PCS'],
                     "line": detail['LINE'],
+                    "Actual_Line": actual_line,
                     "urutan_proses": detail['URUTAN']
                 }
                 st.session_state.status_kerja = "RUNNING"
@@ -275,7 +359,6 @@ else:
                     "Urutan_Proses": dp['urutan_proses'],
                     "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
                     "Waktu_Selesai": "",
-                    "Actual_Line": actual_line,
                     "ACT": 0, "NG": 0, "Status": "START"
                 }
                 with st.spinner("Sedang mencatat ke sistem..."):
@@ -307,6 +390,7 @@ else:
             std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
             standar_input = (dp['sec_pcs'] * act) / 60 if act > 0 else 0
             persen_prod = round((standar_input / jam_total) * 100, 2) if jam_total > 0 and std_dari_state > 0  else 0.0
+            lost_time = max(0, (jam_total) - standar_input) if act > 0 and std_dari_state > 0 else 0.0
 
             if not st.session_state.get('data_sph_terkirim'):
                 if st.button("🚀 Kirim Data SPH", use_container_width=True):
@@ -322,7 +406,8 @@ else:
                             "%_Prod":f"{persen_prod:.2f}%",
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
                             "Total_Jam": f"{round(jam_total/60, 2)}",
-                            "Status": "FINISH"
+                            "Status": "FINISH",
+                            "Lost_Time_Menit": round(lost_time, 2),
                         }
                         if simpan_ke_sheet(data_finish, "FINISH"):
                             st.session_state.data_sph_terkirim = True
@@ -332,6 +417,12 @@ else:
 
             # --- FORM ABNORMAL (Muncul setelah SPH) ---
         if st.session_state.get('data_sph_terkirim'):
+            #Tampilan metrik SPH dan Lost Time
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Persentase Produksi", f"{persen_prod:.2f} %")
+            c2.metric("Lost Time", f"{round(lost_time, 2)} Menit", delta=f"{round(lost_time/60, 2)} Jam")
+            c3.metric("Rasio NG", f"{(ng/act * 100) if act > 0 else 0:.2f} %")
+
             st.divider()
             with st.form("form_abnormal_baru"):
                 st.subheader("⚠️ Input Detail Abnormal")
