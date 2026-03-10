@@ -290,7 +290,7 @@ if nama_karyawan:
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
 
-if nama_karyawan == "":
+if not nama_karyawan == "":
     st.warning("⚠️ Masukkan Nama di sidebar untuk memulai.")
 else:
     # --- 1. INPUT BARCODE ---
