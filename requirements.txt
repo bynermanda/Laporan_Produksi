@@ -5,3 +5,4 @@ pytz
 gspread
 streamlit-qrcode-scanner
 oauth2client
+pyasn1>=0.6.2 # not directly required, pinned by Snyk to avoid a vulnerability
