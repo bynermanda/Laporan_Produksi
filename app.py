@@ -258,8 +258,8 @@ if nama_karyawan:
     
     # Tombol Check-In
     if st.sidebar.button("🟢 Check-In Sekarang"):
-        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-        row_index = get_last_active_row(df_waktu, nama_karyawan)
+        df_existing = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+        row_index = get_last_active_row(df_existing, nama_karyawan)
 
         if row_index:
             st.sidebar.warning("Anda sudah Check-In sebelumnya!")
@@ -274,6 +274,8 @@ if nama_karyawan:
                 "Total_Jam": 0,
                 "Aktivitas": "Mulai Shift"
             }])
+            df_new_row = pd.DataFrame([new_data_df])
+            df_final = pd.concat([df_existing, df_new_row], ignore_index=True)
             conn.create(URL_KITA, worksheet="Waktu Kerja", data=new_data_df)
             st.sidebar.success(f"Check-In Berhasil: {jam}")
 
@@ -508,4 +510,3 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
-
