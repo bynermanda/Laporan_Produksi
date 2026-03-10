@@ -233,8 +233,14 @@ def update_aktivitas_kerja(nama, pesan_baru):
         
 # --- TAMPILAN SIDEBAR ---
 st.sidebar.title("👤 Operator")
-nama_karyawan = st.sidebar.text_input("Nama Karyawan", placeholder="Input Nama Anda")
-st.sidebar.caption("Gunakan Kamera Utama untuk Scan Barcode Part")
+st.sidebar.caption("Gunakan Kamera Utama untuk Scan")
+# --- Tombol Scanner untuk Nama
+with st.sidebar.expander("📸 Scan Barcode Nama"):
+    barcode_nama = qrcode_scanner(key='scanner_nama')
+    if barcode_nama:
+        st.session_state.nama_terpilih = barcode_nama
+        st.success(f"Nama Terdeteksi: {barcode_nama}")
+nama_karyawan = st.session_state.get('nama_terpilih', "")
 
 if nama_karyawan:
     st.sidebar.markdown(f"Selamat Bekerja, **{nama_karyawan}**!")
@@ -280,24 +286,24 @@ if nama_karyawan:
                     fmt = "%Y-%m-%d %H:%M:%S"
                     dt_in = datetime.strptime(f"{tgl_str} {jam_in_str}", fmt)
                     selisih = waktu_sekarang - dt_in
-                
                 # Konversi ke total jam (desimal, misal 8.5 jam)
                     total_jam = round(selisih.total_seconds() / 3600, 2)
                 except Exception as e:
                     total_jam = 0
                     st.sidebar.error(f"Gagal hitung jam: {e}")
 
-                    df_waktu.loc[idx_pandas, 'Check-Out'] = jam_out_str
-                    df_waktu.loc[idx_pandas, 'Total_Jam'] = total_jam
+                df_waktu.loc[idx_pandas, 'Check-Out'] = jam_out_str
+                df_waktu.loc[idx_pandas, 'Total_Jam'] = total_jam
 
-                    aktivitas_lama = df_waktu.loc[idx_pandas, 'Aktivitas']
-                    if pd.isna(aktivitas_lama): aktivitas_lama = ""
-                    df_waktu.loc[idx_pandas, 'Aktivitas'] = f"{aktivitas_lama} | [{jam_out_str}] Check-Out Selesai Shift"
-                    conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
+                aktivitas_lama = df_waktu.loc[idx_pandas, 'Aktivitas']
+                if pd.isna(aktivitas_lama): aktivitas_lama = ""
+                df_waktu.loc[idx_pandas, 'Aktivitas'] = f"{aktivitas_lama} | [{jam_out_str}] Check-Out Selesai Shift"
+                conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
             
-                    st.sidebar.error(f"🔴 Check-Out Berhasil! Total Kerja: {total_jam} Jam")
-                    st.balloons()
-                    st.cache_data.clear()
+                st.sidebar.error(f"🔴 Check-Out Berhasil! Total Kerja: {total_jam} Jam")
+                st.cache_data.clear()
+                st.balloons()
+                st.cache_data.clear()
             else:
                 st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
             
