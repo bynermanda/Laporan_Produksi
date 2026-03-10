@@ -3,3 +3,7 @@ pandas
 st-gsheets-connection
 pytz
 gspread
+streamlit-barcode-scanner
+opencv-python-headless
+pyzar
+numpy
