@@ -251,7 +251,9 @@ def update_aktivitas_kerja(nama, pesan_baru):
         
 # --- TAMPILAN SIDEBAR ---
 st.sidebar.title("👤 Operator")
-nama_karyawan = st.write("### 📸 Scan Barcode untuk Check In")
+nama_karyawan = st.sidebar.text_input("Nama Karyawan", placeholder="Input Nama Anda")
+st.sidebar.caption("Gunakan Kamera Utama untuk Scan Barcode Part")
+
 if nama_karyawan:
     st.sidebar.markdown(f"Selamat Bekerja, **{nama_karyawan}**!")
     
@@ -289,7 +291,7 @@ if nama_karyawan:
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
 
-if nama_karyawan == "":
+if not nama_karyawan == "":
     st.warning("⚠️ Masukkan Nama di sidebar untuk memulai.")
 else:
     # --- 1. INPUT BARCODE ---
