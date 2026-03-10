@@ -162,40 +162,10 @@ def handle_scan():
         return
 
     # Pecah barcode (Pemisah ;)
-    data_pecah = raw_scan.split(';')
     part_no_scanned = raw_scan.split(';')[0].strip()
 
     match = main_df[main_df['Part_No'] == part_no_scanned]
-    # CEK: Apakah operator ini masih punya pekerjaan yang belum selesai? (Status START tapi belum FINISH)
-    df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
-    ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
-        
-    if not ongoing.empty:
-        # Jika ada proses yang masih jalan
-        if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-            row_terakhir = ongoing.iloc[-1]
-            p_no = row_terakhir['Part_No']
-        # 1. Cari standar dari Main Data
-            match_main = main_df[main_df['Part_No'] == p_no]
-
-        # 2. Rekonstruksi data part yang sedang dikerjakan
-            st.session_state.current_part = {
-                'part_no': row_terakhir['Part_No'],
-                'part_name': row_terakhir['Part_Name'],
-                'model': row_terakhir['Model'],
-                'urutan_proses': row_terakhir['Urutan_Proses'],
-                'line': row_terakhir['Line'],
-                'sec_pcs': match_main.iloc[0]['SEC /PCS'] if not match_main.empty else 0
-            }
-            # 3. Pulihkan Waktu Start
-            dt_str = f"{row_terakhir['Tanggal']} {row_terakhir['Waktu_Mulai']}"
-            st.session_state.waktu_start = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-            st.session_state.status_kerja = "RUNNING" # Pulihkan ke Running
-            st.success(f"🔄 Sesi {p_no} dipulihkan!")
-            st.session_state.barcode_input = ""
-            st.rerun()
-        
-        # Jika statusnya RUNNING, baru boleh lanjut untuk scan FINISH
+     # Jika statusnya RUNNING, baru boleh lanjut untuk scan FINISH
     if st.session_state.get('status_kerja') == "RUNNING":
         if part_no_scanned == st.session_state.current_part['part_no']:
             st.session_state.status_kerja = "FINISHING"
@@ -205,17 +175,30 @@ def handle_scan():
             st.rerun()
         else:
             st.error(f"❌ Barcode ({part_no_scanned}) berbeda dengan Part yang sedang jalan!")
+            st.session_state.barcode_input = ""
             return # Berhenti di sini jika salah scan part
     
     if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
         match = main_df[main_df['Part_No'] == part_no_scanned]
-        if not match.empty:
-            st.session_state.available_processes = match.to_dict('records')
-            st.session_state.status_kerja = "SELECTING_PROCESS"
+        # CEK: Apakah operator ini masih punya pekerjaan yang belum selesai? (Status START tapi belum FINISH)
+        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+        ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
+    
+        if not ongoing.empty:
+            st.session_state.status_kerja = "RUNNING"
+            st.session_state.barcode_input = ""
+            st.rerun()
         else:
-            st.error(f"❌ Part No {part_no_scanned} tidak terdaftar di MainData!")
-    
-    
+            match = main_df[main_df['Part_No'] == part_no_scanned]
+            if not match.empty:
+                st.session_state.available_processes = match.to_dict('records')
+                st.session_state.status_kerja = "SELECTING_PROCESS"
+                st.session_state.barcode_input = ""
+                st.rerun()
+            else:
+                st.error(f"❌ Part No {part_no_scanned} tidak terdaftar!")
+                st.session_state.barcode_input = ""
+
     # Kosongkan input scanner
     st.session_state.barcode_input = ""
 
@@ -334,6 +317,29 @@ if nama_karyawan:
     
     if status_absen:
         is_sudah_checkin = True
+
+# --- LOGIKA PEMULIHAN SESI (Taruh sebelum Tampilan Utama) ---
+if is_sudah_checkin and st.session_state.get('status_kerja', 'IDLE') == "IDLE":
+    df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+    ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
+    
+    if not ongoing.empty:
+        row_terakhir = ongoing.iloc[-1]
+        p_no = row_terakhir['Part_No']
+        match_main = main_df[main_df['Part_No'] == p_no]
+
+        st.session_state.current_part = {
+            'part_no': p_no,
+            'part_name': row_terakhir['Part_Name'],
+            'model': row_terakhir['Model'],
+            'urutan_proses': row_terakhir['Urutan_Proses'],
+            'line': row_terakhir['Line'],
+            'sec_pcs': match_main.iloc[0]['SEC /PCS'] if not match_main.empty else 0
+        }
+        dt_str = f"{row_terakhir['Tanggal']} {row_terakhir['Waktu_Mulai']}"
+        st.session_state.waktu_start = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+        st.session_state.status_kerja = "RUNNING"
+        st.rerun()
 
 if nama_karyawan == "":
     st.warning("⚠️ Mohon Check-In dulu.")
