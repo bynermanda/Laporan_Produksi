@@ -266,7 +266,7 @@ if nama_karyawan:
             row_index = get_last_active_row(df_waktu, nama_karyawan)
 
             if row_index:
-                idx_pandas = row_index -2
+                idx_pandas = row_index - 2
                 # Ambil waktu sekarang untuk Check-Out
                 jam_in_str = df_waktu.loc[idx_pandas, 'Check-In']
                 tgl_str = df_waktu.loc[idx_pandas, 'Tanggal']
