@@ -266,9 +266,15 @@ if nama_karyawan:
         else:
             tgl = datetime.now().strftime("%Y-%m-%d")
             jam = datetime.now().strftime("%H:%M:%S")
-            # Create baris baru: Tanggal, Nama, Check-In, Check-Out(Kosong), Total(0), Aktivitas
-            new_data = [tgl, nama_karyawan, jam, "", 0, "Mulai Shift"]
-            conn.create(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=[new_data])
+            new_data_df = pd.DataFrame([{
+                "Tanggal": tgl,
+                "Nama": nama_karyawan,
+                "Check-In": jam,
+                "Check-Out": "",
+                "Total_Jam": 0,
+                "Aktivitas": "Mulai Shift"
+            }])
+            conn.create(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=new_data_df)
             st.sidebar.success(f"Check-In Berhasil: {jam}")
 
     # Tombol Check-Out
