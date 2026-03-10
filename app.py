@@ -69,6 +69,8 @@ if 'waktu_start' not in st.session_state:
 
 # Inisialisasi Koneksi
 conn = st.connection("gsheets", type=GSheetsConnection)
+if 'nama_terpilih' not in st.session_state:
+    st.session_state.nama_terpilih = ""
 
 # Fungsi Membaca MainData dengan Cache
 @st.cache_data(ttl=3600) # Data disimpan di memori selama 1 jam (3600 detik)
@@ -233,88 +235,122 @@ def update_aktivitas_kerja(nama, pesan_baru):
         
 # --- TAMPILAN SIDEBAR ---
 st.sidebar.title("👤 Operator")
-st.sidebar.caption("Gunakan Kamera Utama untuk Scan")
-# --- Tombol Scanner untuk Nama
-with st.sidebar.expander("📸 Scan Barcode Nama"):
-    barcode_nama = qrcode_scanner(key='scanner_nama')
-    if barcode_nama:
-        st.session_state.nama_terpilih = barcode_nama
-        st.success(f"Nama Terdeteksi: {barcode_nama}")
-nama_karyawan = st.session_state.get('nama_terpilih', "")
-
-if nama_karyawan:
-    st.sidebar.markdown(f"Selamat Bekerja, **{nama_karyawan}**!")
+nama_karyawan = st.sidebar.text_input(
+    "Nama Karyawan", 
+    value=st.session_state.nama_terpilih, 
+    key="input_nama_manual"
+)
+if nama_karyawan != st.session_state.nama_terpilih:
+    st.session_state.nama_terpilih = nama_karyawan
     
-    # Tombol Check-In
-    if st.sidebar.button("🟢 Check-In Sekarang"):
-        try: 
-            df_existing = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-            row_index = get_last_active_row(df_existing, nama_karyawan)
-
-            if row_index:
-                st.sidebar.warning("Anda sudah Check-In sebelumnya!")
-            else:
-                tgl = datetime.now().strftime("%Y-%m-%d")
-                jam = datetime.now().strftime("%H:%M:%S")
-                new_data_df = [tgl, nama_karyawan, jam, "", 0, "Mulai Shift"]
-                df_existing.loc[len(df_existing)] = new_data_df
-                conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_existing)
-                st.sidebar.success(f"Check-In Berhasil: {jam}")
-                st.cache_data.clear()
-
-        except Exception as e:
-            st.sidebar.error(f"Gagal Check-In: {e}")
-
-    # Tombol Check-Out
-    if st.sidebar.button("🔴 Check-Out Sekarang"):
-        try:
-            df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-            row_index = get_last_active_row(df_waktu, nama_karyawan)
-
-            if row_index:
-                idx_pandas = row_index - 2
-                # Ambil waktu sekarang untuk Check-Out
-                jam_in_str = df_waktu.loc[idx_pandas, 'Check-In']
-                tgl_str = df_waktu.loc[idx_pandas, 'Tanggal']
-
-                # 4. Tentukan waktu Check-Out (Sekarang)
-                waktu_sekarang = datetime.now()
-                jam_out_str = waktu_sekarang.strftime("%H:%M:%S")
-
-                try:
-                # Gabungkan Tanggal + Jam agar perhitungan akurat jika lewat tengah malam
-                    fmt = "%Y-%m-%d %H:%M:%S"
-                    dt_in = datetime.strptime(f"{tgl_str} {jam_in_str}", fmt)
-                    selisih = waktu_sekarang - dt_in
-                # Konversi ke total jam (desimal, misal 8.5 jam)
-                    total_jam = round(selisih.total_seconds() / 3600, 2)
-                except Exception as e:
-                    total_jam = 0
-                    st.sidebar.error(f"Gagal hitung jam: {e}")
-
-                df_waktu.loc[idx_pandas, 'Check-Out'] = jam_out_str
-                df_waktu.loc[idx_pandas, 'Total_Jam'] = total_jam
-
-                aktivitas_lama = df_waktu.loc[idx_pandas, 'Aktivitas']
-                if pd.isna(aktivitas_lama): aktivitas_lama = ""
-                df_waktu.loc[idx_pandas, 'Aktivitas'] = f"{aktivitas_lama} | [{jam_out_str}] Check-Out Selesai Shift"
-                conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
-            
-                st.sidebar.error(f"🔴 Check-Out Berhasil! Total Kerja: {total_jam} Jam")
-                st.cache_data.clear()
-                st.balloons()
-                st.cache_data.clear()
-            else:
-                st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
-            
-        except Exception as e:
-            st.sidebar.error(f"Gagal Check-Out: {str(e)}")
-
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
+nama_karyawan = st.session_state.nama_terpilih
+
+if not nama_karyawan:
+    st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
+    barcode_id = qrcode_scanner(key='scanner_id_operator')
+    
+    if barcode_id:
+        # Logika pecah nama (NIK;NAMA) jika perlu
+        nama_fix = barcode_id.split(';')[1] if ';' in barcode_id else barcode_id
+        st.session_state.nama_terpilih = nama_fix
+        st.success(f"ID Terdeteksi: {nama_fix}")
+        time.sleep(0.5)
+        st.rerun()
+
+# --- KONDISI B: NAMA ADA, CEK STATUS ABSENSI ---
+else:
+    # Baca database waktu kerja (Gunakan TTL agar hemat kuota API)
+    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=10)
+    row_index = get_last_active_row(df_waktu, nama_karyawan)
+    
+    # CASE 1: NAMA ADA TAPI BELUM CHECK-IN
+    if not row_index:
+        st.warning(f"Halo **{nama_karyawan}**, Anda belum Check-In hari ini.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🟢 KLIK UNTUK CHECK-IN", use_container_width=True):
+                # Logika Simpan Check-In
+                tgl = datetime.now().strftime("%Y-%m-%d")
+                jam = datetime.now().strftime("%H:%M:%S")
+                new_row = [tgl, nama_karyawan, jam, "", 0, "Mulai Shift"]
+                
+                # Baca ulang df untuk append
+                df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+                df_to_save.loc[len(df_to_save)] = new_row
+                conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_to_save)
+                
+                st.success("Berhasil Check-In!")
+                st.cache_data.clear()
+                st.rerun()
+        
+        with col2:
+            if st.button("🔄 Ganti Operator / Salah Nama", type="secondary", use_container_width=True):
+                st.session_state.nama_terpilih = ""
+                st.rerun()
+
+    # CASE 2: SUDAH CHECK-IN (DASHBOARD PRODUKSI AKTIF)
+    else:
+        st.success(f"👷 Operator: **{nama_karyawan}** | Status: **Sesi Aktif**")
+        
+        # --- TEMPATKAN SCANNER PART PRODUKSI DI SINI ---
+        # (Kode handle_scan(), qrcode_scanner part, dsb)
+        st.divider()
+        st.write("### 📸 Scan Barcode Part untuk Mulai")
+        barcode_part = qrcode_scanner(key='scanner_part')
+        if barcode_part:
+            st.session_state.barcode_input = barcode_part
+            handle_scan()
+
+        # --- TOMBOL CHECK-OUT (Ditaruh di bawah atau Sidebar) ---
+        st.divider()
+        if st.button("🔴 SELESAI SHIFT (CHECK-OUT)", use_container_width=True):
+            try:
+                df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+                row_index = get_last_active_row(df_waktu, nama_karyawan)
+
+                if row_index:
+                    idx_pandas = row_index - 2
+                # Ambil waktu sekarang untuk Check-Out
+                    jam_in_str = df_waktu.loc[idx_pandas, 'Check-In']
+                    tgl_str = df_waktu.loc[idx_pandas, 'Tanggal']
+
+                # 4. Tentukan waktu Check-Out (Sekarang)
+                    waktu_sekarang = datetime.now()
+                    jam_out_str = waktu_sekarang.strftime("%H:%M:%S")
+
+                    try:
+                # Gabungkan Tanggal + Jam agar perhitungan akurat jika lewat tengah malam
+                        fmt = "%Y-%m-%d %H:%M:%S"
+                        dt_in = datetime.strptime(f"{tgl_str} {jam_in_str}", fmt)
+                        selisih = waktu_sekarang - dt_in
+                # Konversi ke total jam (desimal, misal 8.5 jam)
+                        total_jam = round(selisih.total_seconds() / 3600, 2)
+                    except Exception as e:
+                        total_jam = 0
+                        st.sidebar.error(f"Gagal hitung jam: {e}")
+
+                    df_waktu.loc[idx_pandas, 'Check-Out'] = jam_out_str
+                    df_waktu.loc[idx_pandas, 'Total_Jam'] = total_jam
+
+                    aktivitas_lama = df_waktu.loc[idx_pandas, 'Aktivitas']
+                    if pd.isna(aktivitas_lama): aktivitas_lama = ""
+                    df_waktu.loc[idx_pandas, 'Aktivitas'] = f"{aktivitas_lama} | [{jam_out_str}] Check-Out Selesai Shift"
+                    conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
+            
+                    st.sidebar.error(f"🔴 Check-Out Berhasil! Total Kerja: {total_jam} Jam")
+                    st.cache_data.clear()
+                    st.session_state.nama_terpilih = ""
+                    st.balloons()
+                    st.cache_data.clear()
+                else:
+                    st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
+            except Exception as e:
+                st.sidebar.error(f"Gagal Check-Out: {str(e)}")
 
 is_sudah_checkin = False
-
 if nama_karyawan:
     # Baca data waktu kerja untuk validasi status
     df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
