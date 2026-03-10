@@ -210,10 +210,12 @@ if not nama_karyawan:
     st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     
+# LAYAR 1: BELUM SCAN NAMA
+if not nama_karyawan:
+    st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
+    barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
         st.session_state.nama_terpilih = barcode_id
-        st.success(f"✅ Nama Terdeteksi: {barcode_id}")
-        time.sleep(0.5)
         st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
