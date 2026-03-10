@@ -91,10 +91,9 @@ def simpan_ke_sheet(data_dict, tipe):
         df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
         
         if tipe == "START":
-            if tipe == "START":
             # CEK TERAKHIR: Apakah di detik ini sudah ada nama + part + status START?
-                double_check = df_proses[(df_proses['Nama'] == data_dict['Nama']) & 
-                                     (df_proses['Status'] == 'START')]
+            double_check = df_proses[(df_proses['Nama'] == data_dict['Nama']) & 
+                                 (df_proses['Status'] == 'START')]
             
             if not double_check.empty:
                 st.error("⚠️ Data START sudah ada di database. Batalkan manual jika salah.")
@@ -464,7 +463,7 @@ else:
                                 "Operator": nama_karyawan,
                                 "Kode_Abnormal": item['kode'],
                                 "Total_Waktu": item['durasi'],
-                                "Keterangan": item['keterangan'] # Pastikan kolom ini ada di Google Sheet
+                                "Keterangan": item['keterangan']
                             }
                             simpan_ke_sheet(row_ab, "ABNORMAL")
                         st.success(f"✅ {len(baris_input_abnormal)} Data Abnormal Berhasil Disimpan!")
@@ -503,3 +502,4 @@ else:
                 if k in st.session_state: 
                     del st.session_state[k]
             st.rerun()
+
