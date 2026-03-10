@@ -203,13 +203,18 @@ def handle_scan():
     st.session_state.barcode_input = ""
         
 nama_karyawan = st.session_state.nama_terpilih
+
+is_sudah_checkin = False
+if nama_karyawan:
+    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+    # Cek apakah ada baris aktif (Check-In ada, Check-Out kosong)
+    status_absen = get_last_active_row(df_waktu, nama_karyawan)
+    
+    if status_absen:
+        is_sudah_checkin = True
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
 
-if not nama_karyawan:
-    st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
-    barcode_id = qrcode_scanner(key='scanner_id_operator')
-    
 # LAYAR 1: BELUM SCAN NAMA
 if not nama_karyawan:
     st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
@@ -219,15 +224,6 @@ if not nama_karyawan:
         st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
-is_sudah_checkin = False
-if nama_karyawan:
-    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-    # Cek apakah ada baris aktif (Check-In ada, Check-Out kosong)
-    status_absen = get_last_active_row(df_waktu, nama_karyawan)
-    
-    if status_absen:
-        is_sudah_checkin = True
-
 elif not is_sudah_checkin:
     st.warning(f"⚠️ Halo **{nama_karyawan}**, Anda belum Check-In.")
     if st.button("🟢 KLIK UNTUK CHECK-IN SEKARANG", use_container_width=True):
