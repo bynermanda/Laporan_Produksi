@@ -1,15 +1,12 @@
 
 import streamlit as st
 import streamlit.components.v1 as components
-import cv2
+from streamlit_qrcode_scanner import qrcode_scanner
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import pytz
 from datetime import datetime, timedelta, timezone
 import time
-import numpy as np
-from pyzbar.pyzbar import decode
-from PIL import Image
 
 # SETUP THEME LANGSUNG DI KODE
 st.set_page_config(page_title="Laporan Produksi Press PT. ISI", layout="wide")
@@ -226,26 +223,11 @@ else:
     # --- 1. INPUT BARCODE ---
     st.write("### 📸 Scan Barcode via Kamera HP")
 
-    # Fitur bawaan Streamlit untuk buka kamera
-    img_file = st.camera_input("Arahkan kamera ke Barcode Part")
-    if img_file:
-        # Konversi gambar ke format yang bisa dibaca barcode scanner
-        img = Image.open(img_file)
-        img_array = np.array(img)
-
-        # Proses deteksi barcode
-        barcodes = decode(img_array)
-
-        if barcodes:
-            for barcode in barcodes:
-                barcode_value = barcode.data.decode('utf-8')
-                st.success(f"✅ Barcode Terdeteksi: {barcode_value}")
-                # Masukkan ke sistem Anda
-                st.session_state.barcode_input = barcode_value
-                handle_scan() # Jalankan fungsi pemrosesan Anda
-        else:
-            st.error("❌ Barcode tidak terbaca. Pastikan gambar jelas dan fokus.")
-
+    barcode_data = qrcode_scanner(key='scanner')
+    if barcode_data:
+        st.success(f"✅ Terdeteksi: {barcode_data}")
+        st.session_state.barcode_input = barcode_data
+        handle_scan()
     # --- 2. KONDISI: PILIH URUTAN PROSES ---
     if st.session_state.get('status_kerja') == "SELECTING_PROCESS":
         st.subheader("🔍 Pilih Urutan Proses")
