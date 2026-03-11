@@ -386,11 +386,12 @@ else:
             jam_live = round(durasi_live.total_seconds() / 3600, 2)
             st.info(f"⚡ **Proses Berjalan:** {dp['part_name']} | sec_pcs : {dp['sec_pcs']} | {dp['model']}")
             
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("Urutan", dp['urutan_proses'])
             col2.metric("Target Sec/Pcs", dp['sec_pcs'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
+            col5.metric("Actual Line", dp.get('Actual_Line', "N/A"))
 
             st.divider()
 
