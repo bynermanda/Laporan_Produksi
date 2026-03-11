@@ -123,7 +123,6 @@ def simpan_ke_sheet(data_dict, tipe):
                 df_proses.at[idx, 'NG'] = data_dict['NG']
                 df_proses.at[idx, '%_Prod'] = data_dict['%_Prod']
                 df_proses.at[idx, 'Total Istirahat'] = data_dict['Total Istirahat']
-                df_proses.at[idx, 'Actual_Line'] = data_dict.get('Actual_Line', "")
                 df_proses.at[idx, 'Rasio_NG'] = data_dict['Rasio_NG']
                 df_proses.at[idx, 'Total_Jam'] = data_dict['Total_Jam']
                 df_proses.at[idx, 'Status'] = 'FINISH'
@@ -141,6 +140,8 @@ def simpan_ke_sheet(data_dict, tipe):
             # Update ke sheet Abnormal
             conn.update(spreadsheet=URL_KITA, worksheet="ABNORMAL", data=updated_df)
             return True
+
+                
     except Exception as e:
         st.error(f"Gagal memproses data, Catat Laporan dan Lapor Admin: {e}")
         return False
@@ -296,6 +297,31 @@ else:
                         waktu_out = get_waktu_wib()
                         df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
                         row_idx = get_last_active_row(df_waktu, nama_karyawan)
+                        tgl_hari_ini = waktu_out.strftime("%Y-%m-%d")
+
+                        # Ambil data proses
+                        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+
+                        # Filter: Cari semua kerjaan operator ini yang dilakukan HARI INI
+                        summary_kerja = df_proses[
+                            (df_proses['Nama'] == nama_karyawan) & 
+                            (df_proses['Tanggal'] == tgl_hari_ini)
+                        ]
+                        # Buat ringkasan aktivitas kerja hari ini
+                        if not summary_kerja.empty:
+                            # Contoh hasil: "PART-A (100pcs), PART-B (50pcs)"
+                            list_aktivitas = []
+                            for _, row in summary_kerja.iterrows():
+                                # Hanya masukkan yang sudah FINISH agar akurat
+                                status_txt = "OK" if row['Status'] == "FINISH" else "PENDING"
+                                list_aktivitas.append(f"{row['Part_No']} ({row['ACT']}pcs)-{status_txt}")
+
+                            gabungan_aktivitas = " | ".join(list_aktivitas)
+                        else:
+                            gabungan_aktivitas = "Tidak ada aktivitas produksi"
+
+                        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+                        row_idx = get_last_active_row(df_waktu, nama_karyawan)
 
                         if row_idx:
                             idx_pd = row_idx - 2
@@ -309,11 +335,12 @@ else:
                             # Update GSheets
                             df_waktu.loc[idx_pd, 'Check-Out'] = waktu_out.strftime("%H:%M:%S")
                             df_waktu.loc[idx_pd, 'Total_Jam'] = total_jam_shift
+                            df_waktu.loc[idx_pd, 'Aktivitas'] = gabungan_aktivitas
                             conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
 
                             # Reset Sesi
                             st.session_state.nama_terpilih = ""
-                            st.success("Berhasil Check-Out. Sampai jumpa!")
+                            st.success("Check-Out Berhasil & Aktivitas Dirangkum!")
                             time.sleep(2)
                             st.rerun()
                         else:
@@ -341,6 +368,7 @@ else:
                     "model": detail['MODEL'],
                     "sec_pcs": detail['SEC /PCS'],
                     "line": detail['LINE'],
+                    "Actual_Line": actual_line,
                     "urutan_proses": detail['URUTAN']
                 }
                 st.session_state.status_kerja = "RUNNING"
@@ -381,6 +409,7 @@ else:
                         "Model": dp['model'],
                         "Line": dp['line'],
                         "Urutan_Proses": dp['urutan_proses'],
+                        "Actual_Line": dp.get('Actual_Line', ""),
                         "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
                         "Waktu_Selesai": "",
                         "ACT": 0, "NG": 0, "Status": "START"
@@ -464,7 +493,6 @@ else:
                             "Standar Input": standar_input,
                             "%_Prod":f"{persen_prod:.2f}%",
                             "Total Istirahat": total_potongan,
-                            "Actual_Line": dp.get('Actual_Line', ""),
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
                             "Total_Jam": f"{round(durasi_bersih/60, 2)}",
                             "Status": "FINISH"
