@@ -276,49 +276,48 @@ else:
         # TOMBOL CHECK-OUT MUNCUL DI SINI (Saat tidak sedang scan part)
         st.divider()
         st.write("Jika sudah selesai semua pekerjaan shift ini:")
-        if st.button("🔴 SELESAI SHIFT (CHECK-OUT)", use_container_width=True):
-            try:
-                df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-                row_index = get_last_active_row(df_waktu, nama_karyawan)
+        with st.popover("🔴 SELESAI SHIFT (CHECK-OUT)", use_container_width=True):
+            st.write("### Konfirmasi Check-Out")
+            st.warning("Apakah Anda yakin ingin mengakhiri shift sekarang?")
 
-                if row_index:
-                    idx_pandas = row_index - 2
-                # Ambil waktu sekarang untuk Check-Out
-                    jam_in_str = df_waktu.loc[idx_pandas, 'Check-In']
-                    tgl_str = df_waktu.loc[idx_pandas, 'Tanggal']
+            # 1. Validasi: Cek apakah masih ada pekerjaan yang berstatus 'START'
+            df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+            pekerjaan_menggantung = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
 
-                # 4. Tentukan waktu Check-Out (Sekarang)
-                    waktu_sekarang = get_waktu_wib()
-                    jam_out_str = waktu_sekarang.strftime("%H:%M:%S")
+            if not pekerjaan_menggantung.empty:
+                # Jika masih ada kerjaan yang belum di-FINISH
+                part_no_aktif = pekerjaan_menggantung.iloc[0]['Part_No']
+                st.error(f"❌ Tidak bisa Check-Out! Anda masih memiliki pekerjaan aktif pada Part: **{part_no_aktif}**. Silakan Finish-kan dulu.")
+            else:
+                # Jika semua sudah FINISH, baru tombol konfirmasi muncul
+                st.success("✅ Semua pekerjaan sudah selesai.")
+                if st.button("YA, SAYA YAKIN CHECK-OUT", type="primary", use_container_width=True):
+                    with st.spinner("Memproses Check-Out..."):
+                        waktu_out = get_waktu_wib()
+                        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+                        row_idx = get_last_active_row(df_waktu, nama_karyawan)
 
-                    try:
-                # Gabungkan Tanggal + Jam agar perhitungan akurat jika lewat tengah malam
-                        fmt = "%Y-%m-%d %H:%M:%S"
-                        dt_in = datetime.strptime(f"{tgl_str} {jam_in_str}", fmt)
-                        selisih = waktu_sekarang - dt_in
-                # Konversi ke total jam (desimal, misal 8.5 jam)
-                        total_jam = round(selisih.total_seconds() / 3600, 2)
-                    except Exception as e:
-                        total_jam = 0
-                        st.sidebar.error(f"Gagal hitung jam: {e}")
+                        if row_idx:
+                            idx_pd = row_idx - 2
+                            tgl_in = df_waktu.loc[idx_pd, 'Tanggal']
+                            jam_in = df_waktu.loc[idx_pd, 'Check-In']
 
-                    df_waktu.loc[idx_pandas, 'Check-Out'] = jam_out_str
-                    df_waktu.loc[idx_pandas, 'Total_Jam'] = total_jam
+                            # Hitung Total Jam
+                            dt_in = datetime.strptime(f"{tgl_in} {jam_in}", "%Y-%m-%d %H:%M:%S")
+                            total_jam_shift = round((waktu_out - dt_in).total_seconds() / 3600, 2)
 
-                    aktivitas_lama = df_waktu.loc[idx_pandas, 'Aktivitas']
-                    if pd.isna(aktivitas_lama): aktivitas_lama = ""
-                    df_waktu.loc[idx_pandas, 'Aktivitas'] = f"{aktivitas_lama} | [{jam_out_str}] Check-Out Selesai Shift"
-                    conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
-            
-                    st.sidebar.error(f"🔴 Check-Out Berhasil! Total Kerja: {total_jam} Jam")
-                    st.cache_data.clear()
-                    st.session_state.nama_terpilih = ""
-                    st.balloons()
-                    st.cache_data.clear()
-                else:
-                    st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
-            except Exception as e:
-                st.sidebar.error(f"Gagal Check-Out: {str(e)}")
+                            # Update GSheets
+                            df_waktu.loc[idx_pd, 'Check-Out'] = waktu_out.strftime("%H:%M:%S")
+                            df_waktu.loc[idx_pd, 'Total_Jam'] = total_jam_shift
+                            conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
+
+                            # Reset Sesi
+                            st.session_state.nama_terpilih = ""
+                            st.success("Berhasil Check-Out. Sampai jumpa!")
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")    
             
     # --- KONDISI: SELECTING_PROCESS ---
     elif status_kerja == "SELECTING_PROCESS":
@@ -417,15 +416,14 @@ else:
             jam_total = round(durasi.total_seconds() / 60, 2)
 
             c1, c2, c3 = st.columns(3)
-            act = c1.number_input("Jumlah ACT", min_value=0, step=1)
-            ng = c2.number_input("Jumlah NG", min_value=0, step=1)
+            act = c1.number_input("Jumlah ACT", min_value=0, step=None, value=0)
+            ng = c2.number_input("Jumlah NG", min_value=0, step=None, value=0)
             c3.metric("Durasi", f"{jam_total} Menit", delta=f"{round(jam_total/60, 2)} Jam")
 
             # Kalkulasi SPH
             std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
             standar_input = (dp['sec_pcs'] * act) / 60 if act > 0 else 0
             persen_prod = round((standar_input / jam_total) * 100, 2) if jam_total > 0 and std_dari_state > 0  else 0.0
-            lost_time = max(0, (jam_total) - standar_input) if act > 0 and std_dari_state > 0 else 0.0
 
             if not st.session_state.get('data_sph_terkirim'):
                 if st.button("🚀 Kirim Data SPH", use_container_width=True):
@@ -441,8 +439,7 @@ else:
                             "%_Prod":f"{persen_prod:.2f}%",
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
                             "Total_Jam": f"{round(jam_total/60, 2)}",
-                            "Status": "FINISH",
-                            "Lost_Time_Menit": round(lost_time, 2),
+                            "Status": "FINISH"
                         }
                         if simpan_ke_sheet(data_finish, "FINISH"):
                             st.session_state.data_sph_terkirim = True
@@ -455,7 +452,7 @@ else:
             #Tampilan metrik SPH dan Lost Time
             c1, c2, c3 = st.columns(3)
             c1.metric("Persentase Produksi", f"{persen_prod:.2f} %")
-            c2.metric("Lost Time", f"{round(lost_time, 2)} Menit", delta=f"{round(lost_time/60, 2)} Jam")
+            c2.metric("Total Jam", f"{round(jam_total/60, 2)} Jam")
             c3.metric("Rasio NG", f"{(ng/act * 100) if act > 0 else 0:.2f} %")
 
             st.divider()
