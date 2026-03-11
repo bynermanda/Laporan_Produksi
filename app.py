@@ -122,6 +122,8 @@ def simpan_ke_sheet(data_dict, tipe):
                 df_proses.at[idx, 'ACT'] = data_dict['ACT']
                 df_proses.at[idx, 'NG'] = data_dict['NG']
                 df_proses.at[idx, '%_Prod'] = data_dict['%_Prod']
+                df_proses.at[idx, 'Total Istirahat'] = data_dict['Total Istirahat']
+                df_proses.at[idx, 'Actual_Line'] = data_dict['Actual_Line']
                 df_proses.at[idx, 'Rasio_NG'] = data_dict['Rasio_NG']
                 df_proses.at[idx, 'Total_Jam'] = data_dict['Total_Jam']
                 df_proses.at[idx, 'Status'] = 'FINISH'
@@ -322,12 +324,14 @@ else:
     # --- KONDISI: SELECTING_PROCESS ---
     elif status_kerja == "SELECTING_PROCESS":
         if st.session_state.get('status_kerja') == "SELECTING_PROCESS":
-            list_line = main_df['LINE'].unique().tolist() if 'LINE' in main_df.columns else []
-            actual_line = st.sidebar.selectbox("Line", options=list_line)
             st.subheader("🔍 Pilih Urutan Proses")
             data_pilihan = st.session_state.get('available_processes', [])
+            list_line = main_df['LINE'].unique().tolist() if 'LINE' in main_df.columns else []
         
         if data_pilihan:
+            # Pilihan Actual Line
+            actual_line = st.selectbox("Pilih Line Produksi (Actual Line)", options=list_line)
+            # Tampilkan pilihan urutan proses berdasarkan part yang discan
             opsi_display = {f"{p['URUTAN']} | {p['Part_Name']}": p for p in data_pilihan}
             pilihan_user = st.selectbox("Pilih Urutan Proses Produksi?", options=list(opsi_display.keys()))
 
@@ -416,14 +420,39 @@ else:
             jam_total = round(durasi.total_seconds() / 60, 2)
 
             c1, c2, c3 = st.columns(3)
-            act = c1.number_input("Jumlah ACT", min_value=0, step=None, value=0)
-            ng = c2.number_input("Jumlah NG", min_value=0, step=None, value=0)
+            act_raw = c1.text_input("Jumlah ACT", value="0")
+            ng_raw = c2.text_input("Jumlah NG", value="0")
+            try:
+                act = int(act_raw)
+                ng = int(ng_raw)
+            except ValueError:
+                act = 0
+                ng = 0
             c3.metric("Durasi", f"{jam_total} Menit", delta=f"{round(jam_total/60, 2)} Jam")
+
+            # --- LOGIKA POTONGAN ISTIRAHAT ---
+            st.write("---")
+            st.write("### ☕ Potongan Waktu Istirahat")
+            st.caption("Pilih istirahat yang diambil selama pengerjaan part ini:")
+
+            col_b1, col_b2, col_b3 = st.columns(3)
+            break_10 = col_b1.checkbox("Break 10 Menit")
+            break_40 = col_b2.checkbox("Istirahat 40 Menit")
+            extra_break = col_b3.number_input("Istirahat Lain (Menit)", min_value=0, step=1)
+
+            # Hitung total potongan
+            total_potongan = 0
+            if break_10: total_potongan += 10
+            if break_40: total_potongan += 40
+            total_potongan += extra_break
 
             # Kalkulasi SPH
             std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
             standar_input = (dp['sec_pcs'] * act) / 60 if act > 0 else 0
-            persen_prod = round((standar_input / jam_total) * 100, 2) if jam_total > 0 and std_dari_state > 0  else 0.0
+            ## Dari sini Jam_Total dikurangi potongan istirahat
+            durasi_bersih = max(0, jam_total - total_potongan)
+            st.info(f"⏱️ **Durasi Bersih:** {durasi_bersih} Menit (Sudah dipotong {total_potongan} menit)")
+            persen_prod = round((standar_input / durasi_bersih) * 100, 2) if durasi_bersih > 0 and std_dari_state > 0 else 0.0
 
             if not st.session_state.get('data_sph_terkirim'):
                 if st.button("🚀 Kirim Data SPH", use_container_width=True):
@@ -437,8 +466,10 @@ else:
                             "NG": ng,
                             "Standar Input": standar_input,
                             "%_Prod":f"{persen_prod:.2f}%",
+                            "Total Istirahat": total_potongan,
+                            "Actual_Line": dp['actual_line'],
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
-                            "Total_Jam": f"{round(jam_total/60, 2)}",
+                            "Total_Jam": f"{round(durasi_bersih/60, 2)}",
                             "Status": "FINISH"
                         }
                         if simpan_ke_sheet(data_finish, "FINISH"):
@@ -452,7 +483,7 @@ else:
             #Tampilan metrik SPH dan Lost Time
             c1, c2, c3 = st.columns(3)
             c1.metric("Persentase Produksi", f"{persen_prod:.2f} %")
-            c2.metric("Total Jam", f"{round(jam_total/60, 2)} Jam")
+            c2.metric("Total Jam", f"{round(durasi_bersih/60, 2)} Jam")
             c3.metric("Rasio NG", f"{(ng/act * 100) if act > 0 else 0:.2f} %")
 
             st.divider()
