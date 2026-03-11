@@ -467,7 +467,7 @@ else:
                             "Standar Input": standar_input,
                             "%_Prod":f"{persen_prod:.2f}%",
                             "Total Istirahat": total_potongan,
-                            "Actual_Line": dp['actual_line'],
+                            "Actual_Line": dp.get('Actual_Line', ""),
                             "Rasio_NG": f"{(ng/act * 100) if act > 0 else 0:.2f}%",
                             "Total_Jam": f"{round(durasi_bersih/60, 2)}",
                             "Status": "FINISH"
