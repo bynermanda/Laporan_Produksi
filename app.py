@@ -186,6 +186,7 @@ def handle_scan():
                 'part_name': row_terakhir['Part_Name'],
                 'model': row_terakhir['Model'],
                 'urutan_proses': row_terakhir['Urutan_Proses'],
+                'Actual_Line': row_terakhir.get('Actual_Line', 'N/A'),
                 'line': row_terakhir['Line'],
                 'sec_pcs': match_main.iloc[0]['SEC /PCS'] if not match_main.empty else 0
             }
@@ -391,7 +392,7 @@ else:
             col2.metric("Target Sec/Pcs", dp['sec_pcs'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
-            col5.metric("Actual Line", dp.get('Actual_Line'))
+            col5.metric("Actual Line", dp.get('Actual_Line', ''))
 
             st.divider()
 
