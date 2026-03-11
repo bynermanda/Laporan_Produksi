@@ -461,17 +461,21 @@ else:
             st.write("---")
             st.write("### ☕ Potongan Waktu Istirahat")
             st.caption("Pilih istirahat yang diambil selama pengerjaan part ini:")
+            DAFTAR_BREAK = {
+                "Break 1 (10m)": 10,
+                "Break 2 (10m)": 10,
+                "Istirahat (40m)": 40,
+                "Extra Break (15m)": 15,
+                "2S": 15
+            }
 
-            col_b1, col_b2, col_b3 = st.columns(3)
-            break_10 = col_b1.checkbox("Break 10 Menit")
-            break_40 = col_b2.checkbox("Istirahat 40 Menit")
-            extra_break = col_b3.number_input("Istirahat Lain (Menit)", min_value=0, step=1)
+            pilihan_break = st.multiselect("Pilih Istirahat yang diambil:", options=list(DAFTAR_BREAK.keys()))
+            extra_custom = st.number_input("Istirahat Lainnya (Menit)", min_value=0, step=1, value=0)
 
             # Hitung total potongan
-            total_potongan = 0
-            if break_10: total_potongan += 10
-            if break_40: total_potongan += 40
-            total_potongan += extra_break
+            total_potongan = sum([DAFTAR_BREAK[item] for item in pilihan_break]) + extra_custom
+
+            st.info(f"⏱️ Total Potongan Waktu: **{total_potongan} Menit**")
 
             # Kalkulasi SPH
             std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
