@@ -288,7 +288,7 @@ else:
                     tgl_str = df_waktu.loc[idx_pandas, 'Tanggal']
 
                 # 4. Tentukan waktu Check-Out (Sekarang)
-                    waktu_sekarang = datetime.now()
+                    waktu_sekarang = get_waktu_wib()
                     jam_out_str = waktu_sekarang.strftime("%H:%M:%S")
 
                     try:
@@ -364,32 +364,46 @@ else:
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
 
-            if "is_submitting" not in st.session_state:
-                st.session_state.is_submitting = False
-            if st.button("🚀 Konfirmasi Kirim Start", use_container_width=True):
-                st.session_state.is_submitting = True
+            st.divider()
 
-                data_start = {
-                    "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
-                    "Nama": nama_karyawan,
-                    "Part_No": dp['part_no'],
-                    "Part_Name": dp['part_name'],
-                    "Model": dp['model'],
-                    "Line": dp['line'],
-                    "Urutan_Proses": dp['urutan_proses'],
-                    "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
-                    "Waktu_Selesai": "",
-                    "ACT": 0, "NG": 0, "Status": "START"
-                }
-                with st.spinner("Sedang mencatat ke sistem..."):
-                    if simpan_ke_sheet(data_start, "START"):
-                        st.balloons()
-                        st.success("✅ Produksi Dimulai!")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.session_state.is_submitting = False
-        pass
+            if not st.session_state.get('sudah_start_diklik'):
+                st.write("### Langkah 1: Konfirmasi Mulai Kerja")
+
+                if "is_submitting" not in st.session_state:
+                    st.session_state.is_submitting = False
+                if st.button("🚀 Konfirmasi Kirim Start", use_container_width=True, disabled=st.session_state.is_submitting):
+                    st.session_state.is_submitting = True
+                    data_start = {
+                        "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
+                        "Nama": nama_karyawan,
+                        "Part_No": dp['part_no'],
+                        "Part_Name": dp['part_name'],
+                        "Model": dp['model'],
+                        "Line": dp['line'],
+                        "Urutan_Proses": dp['urutan_proses'],
+                        "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
+                        "Waktu_Selesai": "",
+                        "ACT": 0, "NG": 0, "Status": "START"
+                    }
+                    with st.spinner("Sedang mencatat ke sistem..."):
+                        if simpan_ke_sheet(data_start, "START"):
+                            st.session_state.sudah_start_diklik = True # Tandai sudah start
+                            st.session_state.is_submitting = False # Reset status submitting
+                            st.balloons()
+                            st.success("✅ Produksi Dimulai!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.session_state.is_submitting = False # Reset jika gagal
+                            st.error("❌ Gagal mencatat Start. Coba lagi!")
+
+                    # --- BAGIAN B: JIKA SUDAH START (Muncul Scanner Finish) ---
+                else:
+                    st.write("### Langkah 2: Scan Barcode yang SAMA untuk FINISH")
+                    barcode_data = qrcode_scanner(key='scanner_finish_part')
+                    if barcode_data:
+                        st.session_state.barcode_input = barcode_data
+                        handle_scan() # Memproses perbandingan barcode di fungsi handle_sca
 
     # --- KONDISI: FINISHING (Input Hasil) ---
     elif status_kerja == "FINISHING":
