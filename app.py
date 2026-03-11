@@ -391,7 +391,7 @@ else:
             col2.metric("Target Sec/Pcs", dp['sec_pcs'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
-            col5.metric("Actual Line", dp.get('Actual_Line', "N/A"))
+            col5.metric("Actual Line", dp['Actual_Line'])
 
             st.divider()
 
@@ -466,7 +466,7 @@ else:
                 "Break 2 (10m)": 10,
                 "Istirahat (40m)": 40,
                 "Extra Break (15m)": 15,
-                "2S": 15
+                "2S (15m)": 15
             }
 
             pilihan_break = st.multiselect("Pilih Istirahat yang diambil:", options=list(DAFTAR_BREAK.keys()))
@@ -474,8 +474,6 @@ else:
 
             # Hitung total potongan
             total_potongan = sum([DAFTAR_BREAK[item] for item in pilihan_break]) + extra_custom
-
-            st.info(f"⏱️ Total Potongan Waktu: **{total_potongan} Menit**")
 
             # Kalkulasi SPH
             std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
