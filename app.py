@@ -301,14 +301,6 @@ else:
                         row_idx = get_last_active_row(df_waktu, nama_karyawan)
                         tgl_hari_ini = waktu_out.strftime("%Y-%m-%d")
 
-                     # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
-                    if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
-                        # Pastikan tidak ada data current_part yang menggantung
-                        st.session_state.nama_terpilih = "" 
-                        # Bersihkan state lainnya jika perlu
-                        if 'status_kerja' in st.session_state: st.session_state.status_kerja = "IDLE"
-                        st.rerun()
-
                         # Ambil data proses
                         df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
 
@@ -355,7 +347,15 @@ else:
                             st.rerun()
                         else:
                             st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")    
-            
+                 # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
+                if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
+                    # Pastikan tidak ada data current_part yang menggantung
+                    st.session_state.nama_terpilih = "" 
+                    # Bersihkan state lainnya jika perlu
+                    if 'status_kerja' in st.session_state: st.session_state.status_kerja = "IDLE"
+                    st.rerun()
+
+                    
     # --- KONDISI: SELECTING_PROCESS ---
     elif status_kerja == "SELECTING_PROCESS":
         if st.session_state.get('status_kerja') == "SELECTING_PROCESS":
