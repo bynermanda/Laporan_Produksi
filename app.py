@@ -282,6 +282,14 @@ else:
             st.write("### Konfirmasi Check-Out")
             st.warning("Apakah Anda yakin ingin mengakhiri shift sekarang?")
 
+        # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
+        if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
+            # Pastikan tidak ada data current_part yang menggantung
+            st.session_state.nama_terpilih = "" 
+            # Bersihkan state lainnya jika perlu
+            if 'status_kerja' in st.session_state: st.session_state.status_kerja = "IDLE"
+            st.rerun()
+
             # 1. Validasi: Cek apakah masih ada pekerjaan yang berstatus 'START'
             df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
             pekerjaan_menggantung = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
@@ -419,7 +427,11 @@ else:
                     with st.spinner("Sedang mencatat ke sistem..."):
                         if simpan_ke_sheet(data_start, "START"):
                             st.session_state.sudah_start_diklik = True # Tandai sudah start
-                            st.session_state.is_submitting = False # Reset status submitting
+                            st.session_state.status_kerja = "IDLE" # Reset ke IDLE untuk mencegah klik start lagi
+                            if 'current_part' in st.session_state:
+                                del st.session_state.current_part
+                                
+                            st.session_state.is_submitting = False # Reset flag submit
                             st.balloons()
                             st.success("✅ Produksi Dimulai!")
                             time.sleep(1)
