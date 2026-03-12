@@ -346,16 +346,17 @@ else:
                             time.sleep(2)
                             st.rerun()
                         else:
-                            st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")    
+                            st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
+            st.divider()
                  # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
-                if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
-                    # Pastikan tidak ada data current_part yang menggantung
-                    st.session_state.nama_terpilih = "" 
-                    # Bersihkan state lainnya jika perlu
-                    if 'status_kerja' in st.session_state: st.session_state.status_kerja = "IDLE"
-                    st.rerun()
+            if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
+                # Pastikan tidak ada data current_part yang menggantung
+                st.session_state.nama_terpilih = "" 
+                # Bersihkan state lainnya jika perlu
+                if 'status_kerja' in st.session_state: st.session_state.status_kerja = "IDLE"
+                st.rerun()
 
-                    
+
     # --- KONDISI: SELECTING_PROCESS ---
     elif status_kerja == "SELECTING_PROCESS":
         if st.session_state.get('status_kerja') == "SELECTING_PROCESS":
