@@ -253,7 +253,6 @@ if nama_karyawan:
     tgl_hari_ini = get_waktu_wib().strftime("%Y-%m-%d")
     checkin_found = df_waktu[
         (df_waktu['Nama'] == nama_karyawan) & 
-        (df_waktu['NIK'] == nik_karyawan) &
         (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
     ]
     if not checkin_found.empty:
