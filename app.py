@@ -282,7 +282,6 @@ if not nama_karyawan:
                 st.error("❌ Format barcode salah! Gunakan QR Code Perusahaan")
         else:
             st.error("❌ Format barcode salah!")
-            st.session_state.nik_karyawan = "-"
             time.sleep(1)
             st.rerun()
 
