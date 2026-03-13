@@ -78,7 +78,7 @@ if 'nik_karyawan' not in st.session_state:
 # Fungsi Membaca MainData dengan Cache
 @st.cache_data(ttl=3600) # Data disimpan di memori selama 1 jam (3600 detik)
 def get_main_data(url):
-    df = conn.read(spreadsheet=url, worksheet="MainData", ttl=0)
+    df = conn.read(spreadsheet=url, worksheet="MainData", ttl=3600)
     df.columns = df.columns.str.strip() # Bersihkan nama kolom sekali saja
     return df
 
@@ -139,7 +139,7 @@ def simpan_ke_sheet(data_dict, tipe):
                 return False
             
         elif tipe == "ABNORMAL":
-            df_abnormal = conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=0)
+            df_abnormal = conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=2)
             new_row = pd.DataFrame([data_dict])
             updated_df = pd.concat([df_abnormal, new_row], ignore_index=True)
             # Update ke sheet Abnormal
@@ -234,7 +234,7 @@ nama_karyawan = st.session_state.nama_terpilih
 
 is_sudah_checkin = False
 if nama_karyawan:
-    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=2)
     # Cek apakah ada baris aktif (Check-In ada, Check-Out kosong)
     status_absen = get_last_active_row(df_waktu, nama_karyawan)
     
@@ -272,7 +272,7 @@ elif not is_sudah_checkin:
             "Total_Jam": 0,
             "Aktivitas": "Mulai Shift"
         }
-        df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
+        df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=2)
         new_data_df = pd.DataFrame([new_data])
         df_to_save = pd.concat([df_to_save, new_data_df], ignore_index=True)
         conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_to_save)
