@@ -93,7 +93,7 @@ except Exception as e:
 def simpan_ke_sheet(data_dict, tipe):
     try:
         # 1. Ambil data terbaru dari sheet Proses
-        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=2)
         
         if tipe == "START":
             # CEK TERAKHIR: Apakah di detik ini sudah ada nama + part + status START?
@@ -139,7 +139,10 @@ def simpan_ke_sheet(data_dict, tipe):
                 return False
             
         elif tipe == "ABNORMAL":
-            df_abnormal = conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=2)
+            # Hanya ambil data jika data tersebut belum ada di memori (session_state)
+            if 'abnormal_data' not in st.session_state:
+                    st.session_state.abnormal_data = [conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=2)]
+            df_abnormal = st.session_state.abnormal_data[0]
             new_row = pd.DataFrame([data_dict])
             updated_df = pd.concat([df_abnormal, new_row], ignore_index=True)
             # Update ke sheet Abnormal
@@ -175,7 +178,10 @@ def handle_scan():
     if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
         match = main_df[main_df['Part_No'] == part_no_scanned]
         # CEK: Apakah operator ini masih punya pekerjaan yang belum selesai? (Status START tapi belum FINISH)
-        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+        # gunakan st.session_state untuk menyimpan data proses yang sedang berjalan agar tidak perlu baca ulang ke GSheets setiap kali scan
+        if 'proses_data' not in st.session_state:
+            st.session_state.proses_data = [conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=20)]
+        df_proses = st.session_state.proses_data[0]
         ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
     
         if not ongoing.empty:
@@ -263,6 +269,9 @@ elif not is_sudah_checkin:
     if st.button("🟢 KLIK UNTUK CHECK-IN SEKARANG", use_container_width=True):
         # Logika Simpan Check-In ke GSheets
         waktu_skrg = get_waktu_wib()
+        if 'df_waktu' not in st.session_state:
+            st.session_state.df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=20)
+            df_to_save = st.session_state.df_waktu
         new_data = {
             "Tanggal": waktu_skrg.strftime("%Y-%m-%d"),
             "Nama": nama_karyawan,
@@ -272,10 +281,11 @@ elif not is_sudah_checkin:
             "Total_Jam": 0,
             "Aktivitas": "Mulai Shift"
         }
-        df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=2)
-        new_data_df = pd.DataFrame([new_data])
-        df_to_save = pd.concat([df_to_save, new_data_df], ignore_index=True)
-        conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_to_save)
+        new_row_df = pd.DataFrame([new_data])
+        df_updated = pd.concat([df_to_save, new_row_df], ignore_index=True)
+        conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_updated)
+
+        del st.session_state.df_waktu # Hapus cache data waktu agar saat check-out bisa baca data terbaru  
         
         st.success("Berhasil Check-In! Scanner Part Aktif.")
         st.cache_data.clear()
@@ -303,7 +313,7 @@ else:
             st.warning("Apakah Anda yakin ingin mengakhiri shift sekarang?")
 
             # 1. Validasi: Cek apakah masih ada pekerjaan yang berstatus 'START'
-            df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+            df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=20)
             pekerjaan_menggantung = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
 
             if not pekerjaan_menggantung.empty:
@@ -321,7 +331,7 @@ else:
                         tgl_hari_ini = waktu_out.strftime("%Y-%m-%d")
 
                         # Ambil data proses
-                        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+                        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=2)
 
                         # Filter: Cari semua kerjaan operator ini yang dilakukan HARI INI
                         summary_kerja = df_proses[
