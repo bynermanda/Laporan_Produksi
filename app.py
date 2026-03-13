@@ -238,6 +238,7 @@ def handle_scan():
 
  #--- LOGIKA UTAMA ---       
 nama_karyawan = st.session_state.get('nama_terpilih', None)
+nik_karyawan = st.session_state.get('nik_karyawan', None)
 is_sudah_checkin = False
 if nama_karyawan:
     if 'df_waktu_cache' not in st.session_state:
@@ -252,6 +253,7 @@ if nama_karyawan:
     tgl_hari_ini = get_waktu_wib().strftime("%Y-%m-%d")
     checkin_found = df_waktu[
         (df_waktu['Nama'] == nama_karyawan) & 
+        (df_waktu['NIK'] == nik_karyawan) &
         (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
     ]
     if not checkin_found.empty:
@@ -270,13 +272,19 @@ if not nama_karyawan:
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
         if ";" in barcode_id:
-            nik, nama = barcode_id.split(';')
-            st.session_state.nik_karyawan = nik.strip()
-            st.session_state.nama_terpilih = nama.strip()
+            parts = barcode_id.split(';')
+            if len(parts) == 2:
+                nik, nama = parts
+                st.session_state.nik_karyawan = nik.strip()
+                st.session_state.nama_terpilih = nama.strip()
+                st.rerun()
+            else:
+                st.error("❌ Format barcode salah! Gunakan QR Code Perusahaan")
         else:
-            st.session_state.nama_terpilih = barcode_id
+            st.error("❌ Format barcode salah!")
             st.session_state.nik_karyawan = "-"
-        st.rerun()
+            time.sleep(1)
+            st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
