@@ -180,7 +180,7 @@ def handle_scan():
         # CEK: Apakah operator ini masih punya pekerjaan yang belum selesai? (Status START tapi belum FINISH)
         # gunakan st.session_state untuk menyimpan data proses yang sedang berjalan agar tidak perlu baca ulang ke GSheets setiap kali scan
         if 'proses_data' not in st.session_state:
-            st.session_state.proses_data = [conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=20)]
+            st.session_state.proses_data = [conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)]
         df_proses = st.session_state.proses_data[0]
         ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
     
