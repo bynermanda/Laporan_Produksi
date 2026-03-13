@@ -379,10 +379,11 @@ else:
             st.divider()
                  # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
             if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
-                # Pastikan tidak ada data current_part yang menggantung
                 st.session_state.nama_terpilih = "" 
-                # Bersihkan state lainnya jika perlu
-                if 'status_kerja' in st.session_state: st.session_state.status_kerja = "IDLE"
+                st.session_state.nik_karyawan = ""
+                if 'status_kerja' in st.session_state:
+                    st.session_state.status_kerja = "IDLE"
+                time.sleep(1)
                 st.rerun()
 
 
