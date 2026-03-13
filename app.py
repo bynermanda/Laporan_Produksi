@@ -263,9 +263,17 @@ elif not is_sudah_checkin:
     if st.button("🟢 KLIK UNTUK CHECK-IN SEKARANG", use_container_width=True):
         # Logika Simpan Check-In ke GSheets
         waktu_skrg = get_waktu_wib()
-        new_row = [waktu_skrg.strftime("%Y-%m-%d"), nama_karyawan, nik_karyawan, waktu_skrg.strftime("%H:%M:%S"), "", 0, "Mulai Shift"]
+        new_data = {
+            "Tanggal": waktu_skrg.strftime("%Y-%m-%d"),
+            "Nama": nama_karyawan,
+            "NIK": nik_karyawan, # Masuk tepat ke kolom NIK
+            "Check-In": waktu_skrg.strftime("%H:%M:%S"),
+            "Check-Out": "",
+            "Total_Jam": 0,
+            "Aktivitas": "Mulai Shift"
+        }
         df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-        new_data_df = pd.DataFrame([new_row])
+        new_data_df = pd.DataFrame([new_data])
         df_to_save = pd.concat([df_to_save, new_data_df], ignore_index=True)
         conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_to_save)
         
