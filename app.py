@@ -68,8 +68,12 @@ if 'waktu_start' not in st.session_state:
 
 # Inisialisasi Koneksi
 conn = st.connection("gsheets", type=GSheetsConnection)
+nama_karyawan = st.session_state.get('nama_terpilih', None)
+nik_karyawan = st.session_state.get('nik_karyawan', None)
 if 'nama_terpilih' not in st.session_state:
     st.session_state.nama_terpilih = ""
+if 'nik_karyawan' not in st.session_state:
+    st.session_state.nik_karyawan = ""
 
 # Fungsi Membaca MainData dengan Cache
 @st.cache_data(ttl=3600) # Data disimpan di memori selama 1 jam (3600 detik)
@@ -244,16 +248,22 @@ if not nama_karyawan:
     st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
-        st.session_state.nama_terpilih = barcode_id
+        if ";" in barcode_id:
+            nik, nama = barcode_id.split(';')
+            st.session_state.nik_karyawan = nik.strip()
+            st.session_state.nama_terpilih = nama.strip()
+        else:
+            st.session_state.nama_terpilih = barcode_id
+            st.session_state.nik_karyawan = "-"
         st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
-    st.warning(f"⚠️ Halo **{nama_karyawan}**, Anda belum Check-In.")
+    st.warning(f"⚠️ Halo **{nama_karyawan}**,{nik_karyawan} Anda belum Check-In.")
     if st.button("🟢 KLIK UNTUK CHECK-IN SEKARANG", use_container_width=True):
         # Logika Simpan Check-In ke GSheets
         waktu_skrg = get_waktu_wib()
-        new_row = [waktu_skrg.strftime("%Y-%m-%d"), nama_karyawan, waktu_skrg.strftime("%H:%M:%S"), "", 0, "Mulai Shift"]
+        new_row = [waktu_skrg.strftime("%Y-%m-%d"), nama_karyawan, nik_karyawan, waktu_skrg.strftime("%H:%M:%S"), "", 0, "Mulai Shift"]
         df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
         df_to_save.loc[len(df_to_save)] = new_row
         conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_to_save)
@@ -264,7 +274,7 @@ elif not is_sudah_checkin:
 
 # LAYAR 3 & 4: SUDAH CHECK-IN (AREA PRODUKSI)
 else:
-    st.success(f"👷 Operator: **{nama_karyawan}** | Sesi Aktif")
+    st.success(f"👷 Operator: **{nama_karyawan}**|**{nik_karyawan}** | Sesi Aktif")
     
     status_kerja = st.session_state.get('status_kerja', 'IDLE')
 
@@ -416,6 +426,7 @@ else:
                     data_start = {
                         "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
                         "Nama": nama_karyawan,
+                        "NIK": st.session_state.get('nik_karyawan', '-'),
                         "Part_No": dp['part_no'],
                         "Part_Name": dp['part_name'],
                         "Model": dp['model'],
