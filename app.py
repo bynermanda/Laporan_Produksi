@@ -291,7 +291,7 @@ elif not is_sudah_checkin:
         new_data = {
             "Tanggal": waktu_skrg.strftime("%Y-%m-%d"),
             "Nama": nama_karyawan,
-            "NIK": nik_karyawan, # Masuk tepat ke kolom NIK
+            "NIK": f"'{nik_karyawan}",
             "Check-In": waktu_skrg.strftime("%H:%M:%S"),
             "Check-Out": "",
             "Total_Jam": 0,
