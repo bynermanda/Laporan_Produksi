@@ -272,18 +272,13 @@ if not nama_karyawan:
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
         if ";" in barcode_id:
-            parts = barcode_id.split(';')
-            if len(parts) == 2:
-                nik, nama = parts
-                st.session_state.nik_karyawan = nik.strip()
-                st.session_state.nama_terpilih = nama.strip()
-                st.rerun()
-            else:
-                st.error("❌ Format barcode salah! Gunakan QR Code Perusahaan")
+            nik, nama = barcode_id.split(';')
+            st.session_state.nik_karyawan = nik.strip()
+            st.session_state.nama_terpilih = nama.strip()
         else:
-            st.error("❌ Format barcode salah!")
-            time.sleep(1)
-            st.rerun()
+            st.session_state.nama_terpilih = barcode_id
+            st.session_state.nik_karyawan = "-"
+        st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
