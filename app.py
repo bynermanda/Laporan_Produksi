@@ -235,17 +235,32 @@ def handle_scan():
 
     # Kosongkan input scanner
     st.session_state.barcode_input = ""
-        
-nama_karyawan = st.session_state.nama_terpilih
 
+ #--- LOGIKA UTAMA ---       
+nama_karyawan = st.session_state.get('nama_terpilih', None)
 is_sudah_checkin = False
 if nama_karyawan:
-    df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=2)
-    # Cek apakah ada baris aktif (Check-In ada, Check-Out kosong)
-    status_absen = get_last_active_row(df_waktu, nama_karyawan)
+    if 'df_waktu_cache' not in st.session_state:
+        try:
+            st.session_state.df_waktu_cache = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=20)
+        except Exception as e:
+            st.error(f"Gagal memuat data waktu kerja: {e} TUNGGU 3 DETIK DAN SCAN ULANG NAMA!")
+            st.session_state.df_waktu_cache = pd.DataFrame() # Set ke DataFrame kosong jika gagal
     
-    if status_absen:
+    df_waktu = st.session_state.df_waktu_cache
+    # Cek apakah operator ini sudah check-in hari ini (Logic Anda)
+    tgl_hari_ini = get_waktu_wib().strftime("%Y-%m-%d")
+    checkin_found = df_waktu[
+        (df_waktu['Nama'] == nama_karyawan) & 
+        (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
+    ]
+    if not checkin_found.empty:
+        baris_aktif = checkin_found.iloc[-1]
         is_sudah_checkin = True
+        tgl_checkin_asli = baris_aktif['Tanggal']
+    else:
+        is_sudah_checkin = False
+
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
 
