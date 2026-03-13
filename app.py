@@ -265,7 +265,8 @@ elif not is_sudah_checkin:
         waktu_skrg = get_waktu_wib()
         new_row = [waktu_skrg.strftime("%Y-%m-%d"), nama_karyawan, nik_karyawan, waktu_skrg.strftime("%H:%M:%S"), "", 0, "Mulai Shift"]
         df_to_save = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
-        df_to_save.loc[len(df_to_save)] = new_row
+        new_data_df = pd.DataFrame([new_row])
+        df_to_save = pd.concat([df_to_save, new_data_df], ignore_index=True)
         conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_to_save)
         
         st.success("Berhasil Check-In! Scanner Part Aktif.")
