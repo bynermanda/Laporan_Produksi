@@ -68,6 +68,15 @@ if 'waktu_start' not in st.session_state:
 
 # Inisialisasi Koneksi
 conn = st.connection("gsheets", type=GSheetsConnection)
+
+if 'list_nik_terdaftar' not in st.session_state:
+    # Ambil data dari sheet "Master_Karyawan" (kolom NIK)
+    try:
+        df_karyawan = conn.read(spreadsheet=URL_KITA, worksheet="Master_Karyawan", ttl=3600)
+        st.session_state.list_nik_terdaftar = df_karyawan['NIK'].astype(str).str.strip().tolist()
+    except:
+        st.session_state.list_nik_terdaftar = []  # Fallback jika sheet tidak ada
+
 nama_karyawan = st.session_state.get('nama_terpilih', None)
 nik_karyawan = st.session_state.get('nik_karyawan', None)
 if 'nama_terpilih' not in st.session_state:
@@ -270,14 +279,23 @@ if not nama_karyawan:
     st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
+        # Sanitasi & Split (seperti kode sebelumnya)
         if ";" in barcode_id:
             nik, nama = barcode_id.split(';')
-            st.session_state.nik_karyawan = nik.strip()
-            st.session_state.nama_terpilih = nama.strip()
+            nik = nik.strip()
+            
+            # --- INI FILTRASI AUTHENTICATION-NYA ---
+            if nik in st.session_state.list_nik_terdaftar:
+                st.session_state.nik_karyawan = nik
+                st.session_state.nama_terpilih = nama.strip()
+                st.rerun()
+            else:
+                st.error(f"🚫 NIK {nik} Tidak Terdaftar! Hubungi Supervisor.")
+                time.sleep(2)
         else:
             st.session_state.nama_terpilih = barcode_id
             st.session_state.nik_karyawan = "-"
-        st.rerun()
+            st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
@@ -291,7 +309,7 @@ elif not is_sudah_checkin:
         new_data = {
             "Tanggal": waktu_skrg.strftime("%Y-%m-%d"),
             "Nama": nama_karyawan,
-            "NIK": f"'{nik_karyawan}",
+            "NIK": nik_karyawan, # Masuk tepat ke kolom NIK
             "Check-In": waktu_skrg.strftime("%H:%M:%S"),
             "Check-Out": "",
             "Total_Jam": 0,
