@@ -298,9 +298,11 @@ if not nama_karyawan:
             else:
                 st.error(f"🚫 NIK {raw_nik} Tidak Terdaftar!")
                 time.sleep(2)
+                st.rerun()
         else:
             st.warning("⚠️ Gunakan ID Card Resmi (Format NIK;NAMA)")
             time.sleep(1)
+            st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
