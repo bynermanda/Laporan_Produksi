@@ -332,7 +332,6 @@ elif not is_sudah_checkin:
         
         st.success("Berhasil Check-In! Scanner Part Aktif.")
         st.cache_data.clear()
-        st.rerun()
 
 # LAYAR 3 & 4: SUDAH CHECK-IN (AREA PRODUKSI)
 else:
