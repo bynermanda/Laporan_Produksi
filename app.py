@@ -327,7 +327,8 @@ elif not is_sudah_checkin:
         conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_updated)
         if 'df_waktu' in st.session_state:
             del st.session_state.df_waktu # Hapus cache data waktu agar saat check-out bisa baca data terbaru
-        st.session_state.is_sudah_checkin = True  
+        st.session_state.is_sudah_checkin = True
+        st.session_state.status_kerja = "IDLE"
         
         st.success("Berhasil Check-In! Scanner Part Aktif.")
         st.cache_data.clear()
