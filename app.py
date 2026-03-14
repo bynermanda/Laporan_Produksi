@@ -280,22 +280,27 @@ if not nama_karyawan:
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
         # Sanitasi & Split (seperti kode sebelumnya)
-        if barcode_id and ";" in barcode_id:
-            nik_scan = barcode_id.split(';')[0].strip().replace(".", "")
-            nik_terdaftar_clean = [n.replace(".", "") for n in st.session_state.list_nik_terdaftar]
+        if ";" in barcode_id:
+            raw_nik = barcode_id.split(';')[0].strip()
+            raw_nama = barcode_id.split(';')[1].strip()
+
+            # Normalisasi untuk perbandingan (Hapus Titik)
+            nik_scan_clean = raw_nik.replace(".", "")
+            nik_master_clean = [str(n).replace(".", "").strip() for n in st.session_state.list_nik_terdaftar]
             
             # --- INI FILTRASI AUTHENTICATION-NYA ---
-            if nik_scan in nik_terdaftar_clean:
-                st.session_state.nik_karyawan = barcode_id.split(';')[0].strip() # Simpan NIK asli (dengan titik)
-                st.session_state.nama_terpilih = barcode_id.split(';')[1].strip()
+            if nik_scan_clean in nik_master_clean:
+                st.session_state.nik_karyawan = raw_nik
+                st.session_state.nama_terpilih = raw_nama
+                st.success(f"✅ Terverifikasi: {raw_nama}")
+                time.sleep(0.5) # Beri jeda agar state tersimpan
                 st.rerun()
             else:
-                st.error(f"🚫 NIK {nik_scan} Tidak Terdaftar! Hubungi Supervisor.")
+                st.error(f"🚫 NIK {raw_nik} Tidak Terdaftar!")
                 time.sleep(2)
         else:
-            st.session_state.nama_terpilih = barcode_id
-            st.session_state.nik_karyawan = "-"
-            st.rerun()
+            st.warning("⚠️ Gunakan ID Card Resmi (Format NIK;NAMA)")
+            time.sleep(1)
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
