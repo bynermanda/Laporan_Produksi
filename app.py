@@ -280,17 +280,17 @@ if not nama_karyawan:
     barcode_id = qrcode_scanner(key='scanner_id_operator')
     if barcode_id:
         # Sanitasi & Split (seperti kode sebelumnya)
-        if ";" in barcode_id:
-            nik, nama = barcode_id.split(';')
-            nik = nik.strip()
+        if barcode_id and ";" in barcode_id:
+            nik_scan = barcode_id.split(';')[0].strip().replace(".", "")
+            nik_terdaftar_clean = [n.replace(".", "") for n in st.session_state.list_nik_terdaftar]
             
             # --- INI FILTRASI AUTHENTICATION-NYA ---
-            if nik in st.session_state.list_nik_terdaftar:
-                st.session_state.nik_karyawan = nik
-                st.session_state.nama_terpilih = nama.strip()
+            if nik_scan in nik_terdaftar_clean:
+                st.session_state.nik_karyawan = barcode_id.split(';')[0].strip() # Simpan NIK asli (dengan titik)
+                st.session_state.nama_terpilih = barcode_id.split(';')[1].strip()
                 st.rerun()
             else:
-                st.error(f"🚫 NIK {nik} Tidak Terdaftar! Hubungi Supervisor.")
+                st.error(f"🚫 NIK {nik_scan} Tidak Terdaftar! Hubungi Supervisor.")
                 time.sleep(2)
         else:
             st.session_state.nama_terpilih = barcode_id
