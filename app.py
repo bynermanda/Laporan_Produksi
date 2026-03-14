@@ -325,8 +325,9 @@ elif not is_sudah_checkin:
         new_row_df = pd.DataFrame([new_data])
         df_updated = pd.concat([df_to_save, new_row_df], ignore_index=True)
         conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_updated)
-
-        del st.session_state.df_waktu # Hapus cache data waktu agar saat check-out bisa baca data terbaru  
+        if 'df_waktu' in st.session_state:
+            del st.session_state.df_waktu # Hapus cache data waktu agar saat check-out bisa baca data terbaru
+        st.session_state.is_sudah_checkin = True  
         
         st.success("Berhasil Check-In! Scanner Part Aktif.")
         st.cache_data.clear()
