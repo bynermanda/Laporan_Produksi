@@ -246,31 +246,31 @@ def handle_scan():
     st.session_state.barcode_input = ""
 
  #--- LOGIKA UTAMA ---       
+# --- LOGIKA UTAMA (PERBAIKAN) ---
 nama_karyawan = st.session_state.get('nama_terpilih', None)
 nik_karyawan = st.session_state.get('nik_karyawan', None)
-is_sudah_checkin = False
-if nama_karyawan:
-    if 'df_waktu_cache' not in st.session_state:
-        try:
-            st.session_state.df_waktu_cache = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=5)
-        except Exception as e:
-            st.error(f"Gagal memuat data waktu kerja: {e} TUNGGU 7 DETIK DAN SCAN ULANG NAMA!")
-            st.session_state.df_waktu_cache = pd.DataFrame() # Set ke DataFrame kosong jika gagal
-    
-    df_waktu = st.session_state.df_waktu_cache
-    # Cek apakah operator ini sudah check-in hari ini (Logic Anda)
-    tgl_hari_ini = get_waktu_wib().strftime("%Y-%m-%d")
-    nik_clean = nik_karyawan.replace("'", "").replace(".", "")
-    checkin_found = df_waktu[
-        (df_waktu['NIK'].astype(str).str.replace(".", "").str.contains(nik_clean)) & 
-        (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
-    ]
-    if not checkin_found.empty:
-        baris_aktif = checkin_found.iloc[-1]
-        is_sudah_checkin = True
-        tgl_checkin_asli = baris_aktif['Tanggal']
-    else:
-        is_sudah_checkin = False
+
+# 1. Gunakan session_state sebagai sumber utama status checkin
+if 'is_sudah_checkin' not in st.session_state:
+    st.session_state.is_sudah_checkin = False
+
+if nama_karyawan and not st.session_state.is_sudah_checkin:
+    try:
+        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0) #Agar cepat
+        nik_clean = str(nik_karyawan).replace("'", "").replace(".", "")
+        
+        checkin_found = df_waktu[
+            (df_waktu['NIK'].astype(str).str.replace(".", "").str.contains(nik_clean)) & 
+            (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
+        ]
+        
+        if not checkin_found.empty:
+            st.session_state.is_sudah_checkin = True
+    except Exception as e:
+        st.error(f"Koneksi GSheets bermasalah: {e}")
+
+# 2. SEKARANG buat variabel is_sudah_checkin merujuk ke session_state
+is_sudah_checkin = st.session_state.is_sudah_checkin
 
 
 # --- TAMPILAN UTAMA ---
@@ -414,8 +414,12 @@ else:
                             conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
 
                             # Reset Sesi
+                            st.session_state.is_sudah_checkin = False # KUNCI PENTING
                             st.session_state.nama_terpilih = ""
-                            st.success("Check-Out Berhasil & Aktivitas Dirangkum!")
+                            st.session_state.nik_karyawan = ""
+                            st.session_state.status_kerja = "IDLE"
+
+                            st.success("Check-Out Berhasil!")
                             time.sleep(2)
                             st.rerun()
                         else:
