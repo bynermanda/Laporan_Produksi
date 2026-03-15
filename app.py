@@ -245,33 +245,42 @@ def handle_scan():
     # Kosongkan input scanner
     st.session_state.barcode_input = ""
 
- #--- LOGIKA UTAMA ---       
-nama_karyawan = st.session_state.get('nama_terpilih', None)
-nik_karyawan = st.session_state.get('nik_karyawan', None)
+ #--- LOGIKA UTAMA ---            
+nama_karyawan = st.session_state.get('nama_terpilih', "")
+nik_karyawan = st.session_state.get('nik_karyawan', "")
 
 # Inisialisasi status di memori jika belum ada
 if 'is_sudah_checkin' not in st.session_state:
     st.session_state.is_sudah_checkin = False
 
+# JALANKAN PENGECEKAN HANYA JIKA NAMA SUDAH ADA TAPI STATUS MASIH FALSE
 if nama_karyawan and not st.session_state.is_sudah_checkin:
-    # HANYA BACA GSHEETS JIKA 'data_waktu_kerja' BELUM ADA DI MEMORI
+    # 1. Ambil data (Gunakan Cache Session State)
     if 'data_waktu_kerja' not in st.session_state:
         try:
-            st.session_state.data_waktu_kerja = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=2)
+            # Tarik data terbaru untuk verifikasi
+            st.session_state.data_waktu_kerja = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=5)
         except Exception as e:
-            st.error("Gagal koneksi GSheets (Quota Limit). Tunggu 1 menit.")
             st.session_state.data_waktu_kerja = pd.DataFrame()
 
     df_cek = st.session_state.data_waktu_kerja
+    
     if not df_cek.empty:
-        nik_clean = str(nik_karyawan).replace("'", "").replace(".", "")
+        # Bersihkan NIK untuk perbandingan
+        nik_clean = str(nik_karyawan).replace("'", "").replace(".", "").strip()
+        
+        # Cari apakah ada NIK tersebut yang Check-Out nya masih KOSONG
         checkin_found = df_cek[
             (df_cek['NIK'].astype(str).str.replace(".", "").str.contains(nik_clean)) & 
             (df_cek['Check-Out'].isna() | (df_cek['Check-Out'] == ""))
         ]
+        
         if not checkin_found.empty:
             st.session_state.is_sudah_checkin = True
+        else:
+            st.session_state.is_sudah_checkin = False
 
+# Ambil nilai final untuk digunakan di bawah
 is_sudah_checkin = st.session_state.is_sudah_checkin
 
 # 2. SEKARANG buat variabel is_sudah_checkin merujuk ke session_state
@@ -299,17 +308,15 @@ if not nama_karyawan:
             if nik_scan_clean in nik_master_clean:
                 st.session_state.nik_karyawan = raw_nik
                 st.session_state.nama_terpilih = raw_nama
+                
+                # KUNCI PENTING: Set status check-in ke False setiap kali scan nama baru
+                st.session_state.is_sudah_checkin = False # Paksa cek ulang ke database
+                if 'data_waktu_kerja' in st.session_state:
+                    del st.session_state.data_waktu_kerja # Hapus cache lama
+                
                 st.success(f"✅ Terverifikasi: {raw_nama}")
-                time.sleep(0.5) # Beri jeda agar state tersimpan
+                time.sleep(0.5) 
                 st.rerun()
-            else:
-                st.error(f"🚫 NIK {raw_nik} Tidak Terdaftar!")
-                time.sleep(2)
-                st.rerun()
-        else:
-            st.warning("⚠️ Gunakan ID Card Resmi (Format NIK;NAMA)")
-            time.sleep(1)
-            st.rerun()
 
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
@@ -432,11 +439,11 @@ else:
             st.divider()
                  # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
             if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
-                st.session_state.nama_terpilih = "" 
-                st.session_state.nik_karyawan = ""
-                if 'status_kerja' in st.session_state:
-                    st.session_state.status_kerja = "IDLE"
-                time.sleep(1)
+                # Bersihkan semua
+                for key in ['nama_terpilih', 'nik_karyawan', 'is_sudah_checkin', 'status_kerja', 'data_waktu_kerja']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                
                 st.rerun()
 
 
