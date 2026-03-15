@@ -318,6 +318,12 @@ if not nama_karyawan:
                 time.sleep(0.5) 
                 st.rerun()
 
+            else:
+                st.error(f"🚫 Akses Ditolak! NIK {raw_nik} tidak terdaftar di Master Karyawan.")
+                st.warning("Pastikan Anda menggunakan ID Card resmi atau hubungi Admin.")
+                time.sleep(2)
+                st.rerun()
+
 # LAYAR 2: SUDAH SCAN NAMA TAPI BELUM CHECK-IN
 elif not is_sudah_checkin:
     st.warning(f"⚠️ Halo **{nama_karyawan}**,{nik_karyawan} Anda belum Check-In.")
