@@ -78,7 +78,7 @@ if 'list_nik_terdaftar' not in st.session_state:
         st.session_state.list_nik_terdaftar = []  # Fallback jika sheet tidak ada
 
 nama_karyawan = st.session_state.get('nama_terpilih', None)
-nik_karyawan = st.session_state.get('nik_karyawan', None)
+nik_karyawan = st.session_state.get('nik_karyawan', "")
 if 'nama_terpilih' not in st.session_state:
     st.session_state.nama_terpilih = ""
 if 'nik_karyawan' not in st.session_state:
@@ -252,16 +252,17 @@ is_sudah_checkin = False
 if nama_karyawan:
     if 'df_waktu_cache' not in st.session_state:
         try:
-            st.session_state.df_waktu_cache = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=20)
+            st.session_state.df_waktu_cache = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=5)
         except Exception as e:
-            st.error(f"Gagal memuat data waktu kerja: {e} TUNGGU 3 DETIK DAN SCAN ULANG NAMA!")
+            st.error(f"Gagal memuat data waktu kerja: {e} TUNGGU 7 DETIK DAN SCAN ULANG NAMA!")
             st.session_state.df_waktu_cache = pd.DataFrame() # Set ke DataFrame kosong jika gagal
     
     df_waktu = st.session_state.df_waktu_cache
     # Cek apakah operator ini sudah check-in hari ini (Logic Anda)
     tgl_hari_ini = get_waktu_wib().strftime("%Y-%m-%d")
+    nik_clean = nik_karyawan.replace("'", "").replace(".", "")
     checkin_found = df_waktu[
-        (df_waktu['Nama'] == nama_karyawan) & 
+        (df_waktu['NIK'].astype(str).str.replace(".", "").str.contains(nik_clean)) & 
         (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
     ]
     if not checkin_found.empty:
@@ -270,6 +271,7 @@ if nama_karyawan:
         tgl_checkin_asli = baris_aktif['Tanggal']
     else:
         is_sudah_checkin = False
+is_sudah_checkin = st.session_state.is_sudah_checkin
 
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
@@ -328,8 +330,7 @@ elif not is_sudah_checkin:
         if 'df_waktu' in st.session_state:
             del st.session_state.df_waktu # Hapus cache data waktu agar saat check-out bisa baca data terbaru
         st.session_state.is_sudah_checkin = True
-        st.session_state.status_kerja = "IDLE"
-        
+        st.session_state.status_kerja = "IDLE" 
         st.success("Berhasil Check-In! Scanner Part Aktif.")
         st.cache_data.clear()
         st.rerun()
