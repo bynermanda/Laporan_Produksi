@@ -271,7 +271,7 @@ if nama_karyawan:
         tgl_checkin_asli = baris_aktif['Tanggal']
     else:
         is_sudah_checkin = False
-is_sudah_checkin = st.session_state.is_sudah_checkin
+
 
 # --- TAMPILAN UTAMA ---
 st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
