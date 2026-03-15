@@ -246,28 +246,33 @@ def handle_scan():
     st.session_state.barcode_input = ""
 
  #--- LOGIKA UTAMA ---       
-# --- LOGIKA UTAMA (PERBAIKAN) ---
 nama_karyawan = st.session_state.get('nama_terpilih', None)
 nik_karyawan = st.session_state.get('nik_karyawan', None)
 
-# 1. Gunakan session_state sebagai sumber utama status checkin
+# Inisialisasi status di memori jika belum ada
 if 'is_sudah_checkin' not in st.session_state:
     st.session_state.is_sudah_checkin = False
 
 if nama_karyawan and not st.session_state.is_sudah_checkin:
-    try:
-        df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0) #Agar cepat
+    # HANYA BACA GSHEETS JIKA 'data_waktu_kerja' BELUM ADA DI MEMORI
+    if 'data_waktu_kerja' not in st.session_state:
+        try:
+            st.session_state.data_waktu_kerja = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=3600)
+        except Exception as e:
+            st.error("Gagal koneksi GSheets (Quota Limit). Tunggu 1 menit.")
+            st.session_state.data_waktu_kerja = pd.DataFrame()
+
+    df_cek = st.session_state.data_waktu_kerja
+    if not df_cek.empty:
         nik_clean = str(nik_karyawan).replace("'", "").replace(".", "")
-        
-        checkin_found = df_waktu[
-            (df_waktu['NIK'].astype(str).str.replace(".", "").str.contains(nik_clean)) & 
-            (df_waktu['Check-Out'].isna() | (df_waktu['Check-Out'] == ""))
+        checkin_found = df_cek[
+            (df_cek['NIK'].astype(str).str.replace(".", "").str.contains(nik_clean)) & 
+            (df_cek['Check-Out'].isna() | (df_cek['Check-Out'] == ""))
         ]
-        
         if not checkin_found.empty:
             st.session_state.is_sudah_checkin = True
-    except Exception as e:
-        st.error(f"Koneksi GSheets bermasalah: {e}")
+
+is_sudah_checkin = st.session_state.is_sudah_checkin
 
 # 2. SEKARANG buat variabel is_sudah_checkin merujuk ke session_state
 is_sudah_checkin = st.session_state.is_sudah_checkin
