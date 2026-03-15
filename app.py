@@ -299,9 +299,9 @@ if not nama_karyawan:
             if nik_scan_clean in nik_master_clean:
                 st.session_state.nik_karyawan = raw_nik
                 st.session_state.nama_terpilih = raw_nama
-                st.session_state.is_sudah_checkin = False 
-                if 'df_waktu_cache' in st.session_state:
-                    del st.session_state.df_waktu_cache
+                st.success(f"✅ Terverifikasi: {raw_nama}")
+                time.sleep(0.5) # Beri jeda agar state tersimpan
+                st.rerun()
             else:
                 st.error(f"🚫 NIK {raw_nik} Tidak Terdaftar!")
                 time.sleep(2)
@@ -432,18 +432,10 @@ else:
             st.divider()
                  # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
             if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
-                vars_to_reset = [
-                 'nama_terpilih', 
-                 'nik_karyawan', 
-                 'is_sudah_checkin', # INI KUNCINYA
-                 'status_kerja', 
-                 'current_part', 
-                 'df_waktu_cache',   # Hapus cache data waktu orang sebelumnya
-                 'sudah_start_diklik'
-                ]
-                for var in vars_to_reset:
-                    if var in st.session_state:
-                        del st.session_state[var]
+                st.session_state.nama_terpilih = "" 
+                st.session_state.nik_karyawan = ""
+                if 'status_kerja' in st.session_state:
+                    st.session_state.status_kerja = "IDLE"
                 time.sleep(1)
                 st.rerun()
 
