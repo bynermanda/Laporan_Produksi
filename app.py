@@ -257,7 +257,7 @@ if nama_karyawan and not st.session_state.is_sudah_checkin:
     # HANYA BACA GSHEETS JIKA 'data_waktu_kerja' BELUM ADA DI MEMORI
     if 'data_waktu_kerja' not in st.session_state:
         try:
-            st.session_state.data_waktu_kerja = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=3600)
+            st.session_state.data_waktu_kerja = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=2)
         except Exception as e:
             st.error("Gagal koneksi GSheets (Quota Limit). Tunggu 1 menit.")
             st.session_state.data_waktu_kerja = pd.DataFrame()
