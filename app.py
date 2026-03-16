@@ -353,6 +353,16 @@ elif not is_sudah_checkin:
         st.success("Berhasil Check-In! Scanner Part Aktif.")
         st.rerun()
 
+    st.divider()
+    if st.button("⬅️ Kembali / Scan Ulang ID Operator", type="secondary", use_container_width=True):
+        st.session_state.nama_terpilih = ""
+        st.session_state.nik_karyawan = ""
+        st.session_state.is_sudah_checkin = False
+        if 'data_waktu_kerja' in st.session_state:
+            del st.session_state.data_waktu_kerja
+        st.rerun()
+
+
 # LAYAR 3 & 4: SUDAH CHECK-IN (AREA PRODUKSI)
 else:
     st.success(f"👷 Operator: **{nama_karyawan}**|**{nik_karyawan}** | Sesi Aktif")
