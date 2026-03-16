@@ -72,7 +72,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 if 'list_nik_terdaftar' not in st.session_state:
     # Ambil data dari sheet "Master_Karyawan" (kolom NIK)
     try:
-        df_karyawan = conn.read(spreadsheet=URL_KITA, worksheet="Master_Karyawan", ttl=0)
+        df_karyawan = conn.read(spreadsheet=URL_KITA, worksheet="Master_Karyawan", ttl=3600)
         st.session_state.list_nik_terdaftar = df_karyawan['NIK'].astype(str).str.strip().tolist()
     except:
         st.session_state.list_nik_terdaftar = []  # Fallback jika sheet tidak ada
