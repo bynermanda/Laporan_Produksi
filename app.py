@@ -102,7 +102,7 @@ except Exception as e:
 def simpan_ke_sheet(data_dict, tipe):
     try:
         # 1. Ambil data terbaru dari sheet Proses
-        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=2)
+        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
         
         if tipe == "START":
             # CEK TERAKHIR: Apakah di detik ini sudah ada nama + part + status START?
@@ -336,7 +336,7 @@ elif not is_sudah_checkin:
         new_data = {
             "Tanggal": waktu_skrg.strftime("%Y-%m-%d"),
             "Nama": nama_karyawan,
-            "NIK": nik_karyawan, # Masuk tepat ke kolom NIK
+            "NIK": f"'{nik_karyawan}", # Masuk tepat ke kolom NIK
             "Check-In": waktu_skrg.strftime("%H:%M:%S"),
             "Check-Out": "",
             "Total_Jam": 0,
@@ -522,7 +522,7 @@ else:
                     data_start = {
                         "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
                         "Nama": nama_karyawan,
-                        "NIK": st.session_state.get('nik_karyawan', '-'),
+                        "NIK": f"'{st.session_state.get('nik_karyawan', '-')}",
                         "Part_No": dp['part_no'],
                         "Part_Name": dp['part_name'],
                         "Model": dp['model'],
@@ -682,8 +682,11 @@ else:
                         st.success(f"✅ {len(baris_input_abnormal)} Data Abnormal Berhasil Disimpan!")
                         
                         # RESET SEMUA
-                        for k in ['status_kerja', 'current_part', 'waktu_start', 'waktu_end', 'data_sph_terkirim', 'available_processes']:
+                        for k in ['status_kerja', 'current_part', 'waktu_start', 'waktu_end', 'data_sph_terkirim', 'available_processes', 'sudah_start_diklik','barcode_input','is_submitting']:
                             if k in st.session_state: del st.session_state[k]
+
+                        # Set ulang status ke IDLE agar siap scan part baru
+                        st.session_state.status_kerja = "IDLE"
                         
                         st.balloons()
                         st.success("✅ Semua Laporan Selesai!")
