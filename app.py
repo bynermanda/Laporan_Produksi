@@ -385,7 +385,7 @@ else:
             st.warning("Apakah Anda yakin ingin mengakhiri shift sekarang?")
 
             # 1. Validasi: Cek apakah masih ada pekerjaan yang berstatus 'START'
-            df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=20)
+            df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
             pekerjaan_menggantung = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
 
             if not pekerjaan_menggantung.empty:
@@ -403,7 +403,7 @@ else:
                         tgl_hari_ini = waktu_out.strftime("%Y-%m-%d")
 
                         # Ambil data proses
-                        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=2)
+                        df_proses = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
 
                         # Filter: Cari semua kerjaan operator ini yang dilakukan HARI INI
                         summary_kerja = df_proses[
