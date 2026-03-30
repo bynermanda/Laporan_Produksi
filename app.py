@@ -682,7 +682,7 @@ else:
                         st.success(f"✅ {len(baris_input_abnormal)} Data Abnormal Berhasil Disimpan!")
                         
                         # RESET SEMUA
-                        for k in ['status_kerja', 'current_part', 'waktu_start', 'waktu_end', 'data_sph_terkirim', 'available_processes', 'sudah_start_diklik','barcode_input','is_submitting']:
+                        for k in ['status_kerja', 'current_part', 'waktu_start', 'waktu_end', 'data_sph_terkirim', 'available_processes', 'sudah_start_diklik','barcode_input','is_submitting','proses_data','abnormal_data']:
                             if k in st.session_state: del st.session_state[k]
 
                         # Set ulang status ke IDLE agar siap scan part baru
