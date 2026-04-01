@@ -447,7 +447,7 @@ else:
                             st.session_state.nik_karyawan = ""
                             st.session_state.status_kerja = "IDLE"
 
-                            st.success("Check-Out Berhasil!")
+                            st.success(f"✅ Check-Out Berhasil! Total jam kerja Anda hari ini: {total_jam_shift} Jam.")
                             time.sleep(2)
                             st.rerun()
                         else:
