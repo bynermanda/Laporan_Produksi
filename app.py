@@ -42,20 +42,17 @@ st.markdown("""
     h1, h2, h3, p, span, label {
         color: #ffffff !important;
     }
-
-    /* 4. Warna Tombol Utama (Primary) */
     div.stButton > button {
         background-color: #00FF00 !important; /* Warna Hijau */
         color: black !important;
         border-radius: 10px;
     }
-    /* Target spesifik tombol Batal berdasarkan KEY */
-    div.stButton > button[key="btn_batal_running_fix"] {
+    div.stButton > button[key="btn_reset_biru"] {
         background-color: #FF0000 !important; /* Merah */
         color: white !important;
         border: 2px solid #CC0000 !important;
     }
-    div.stButton > button[key="btn_batal_running_fix"]:hover {
+    div.stButton > button[key="btn_reset_biru"]:hover {
             background-color: #CC0000 !important;
             color: white !important;
     }
@@ -381,7 +378,7 @@ else:
 
     # --- KONDISI: IDLE (Siap Scan Part Baru) ---
     if status_kerja == "IDLE":
-        st.write(" 📸 Scan KANBAN untuk mulai")
+        st.write(" ### 📸 OPSI 1: Scan KANBAN untuk mulai")
         barcode_part = qrcode_scanner(key='scanner_part_prod')
         if barcode_part:
             st.session_state.barcode_input = barcode_part
@@ -389,7 +386,7 @@ else:
 
         st.divider()
 
-        st.write("### ⌨️ Opsi 2: Input  Part NO. Manual")
+        st.write("### ⌨️ Opsi 2: Input  Part No. Manual")
         manual_input = st.text_input("Ketik Part No / Data Kanban", key="manual_part_input").strip().upper()
         if st.button("✅ Konfirmasi Input Manual", use_container_width=True):
             if manual_input:
