@@ -55,6 +55,10 @@ st.markdown("""
         color: white !important;
         border: 2px solid #CC0000 !important;
     }
+    div.stButton > button[key="btn_batal_running_fix"]:hover {
+            background-color: #CC0000 !important;
+            color: white !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -595,11 +599,13 @@ else:
                 st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
                 st.info("Status saat ini: RUNNING. Scan KANBAN untuk FINISH.")
 
-                st.subheader("SCAN KANBAN 2: Scan KANBAN untuk FINISH")
-                barcode_data = qrcode_scanner(key='scanner_finish_part')
-                if barcode_data:
-                    st.session_state.barcode_input = barcode_data
-                    handle_scan()
+            st.divider()
+
+            st.subheader("SCAN KANBAN 2: Scan KANBAN untuk FINISH")
+            barcode_data = qrcode_scanner(key='scanner_finish_part')
+            if barcode_data:
+                st.session_state.barcode_input = barcode_data
+                handle_scan()
         
 
     # --- KONDISI: FINISHING (Input Hasil) ---
