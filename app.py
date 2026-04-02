@@ -527,7 +527,7 @@ else:
                 m_val = c_men.number_input("Menit", min_value=0, step=1, key=f"ab_menit_run_{st.session_state.ab_counter}")
                 kt_val = c_ket.text_input("Keterangan", placeholder="Contoh: Mesin Down", key=f"ab_ket_run_{st.session_state.ab_counter}")
 
-                if st.button(f"Kirim Abnormal {i}", key=f"btn_ab_{i}"):
+                if st.button("🚀 Kirim Data Abnormal", use_container_width=True, key=f"btn_ab_submit_{st.session_state.ab_counter}"):
                     if k_sel != "" and m_val > 0:
                         row_ab = {
                             "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
