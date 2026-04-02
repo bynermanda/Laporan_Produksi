@@ -42,13 +42,6 @@ st.markdown("""
     h1, h2, h3, p, span, label {
         color: #ffffff !important;
     }
-
-    /* 4. Warna Tombol Utama (Primary) */
-    div.stButton > button {
-        background-color: #00FF00 !important; /* Warna Hijau */
-        color: black !important;
-        border-radius: 10px;
-    }
     /* Target spesifik tombol Batal berdasarkan KEY */
     div.stButton > button[key="btn_batal_running_fix"] {
         background-color: #FF0000 !important; /* Merah */
