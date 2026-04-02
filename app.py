@@ -553,6 +553,9 @@ else:
 
                 if st.button("🚀 Kirim Data Abnormal", use_container_width=True, key=f"btn_ab_submit_{st.session_state.ab_counter}"):
                     if k_sel != "" and m_val > 0:
+                        parts = k_sel.split(" [")
+                        kode_hanya = parts[0]
+                        uraian_abnormal = parts[1].replace("]", "") if len(parts) > 1 else "" # Ambil uraian dari dalam tanda kurung jika ada
                         row_ab = {
                             "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
                             "Mesin": dp.get('line', ''),
@@ -561,7 +564,8 @@ else:
                             "Part_Name": dp.get('part_name', ''),
                             "Urutan_Proses": dp.get('urutan_proses', ''),
                             "Operator": nama_karyawan,
-                            "Kode_Abnormal": k_sel,
+                            "Kode_Abnormal": kode_hanya,      
+                            "Uraian_Abnormal": uraian_abnormal,
                             "Total_Waktu": m_val,
                             "Keterangan": kt_val
                         }
@@ -620,6 +624,13 @@ else:
             if barcode_data:
                 st.session_state.barcode_input = barcode_data
                 handle_scan()
+            st.divider()
+            st.write("### ⌨️ Opsi 2: Input Manual (Jika Kamera Rusak)")
+            manual_finish = st.text_input("Ketik Part No untuk Finish", key="manual_part_finish_input").strip().upper()
+            if st.button("✅ Konfirmasi Input Manual Finish", use_container_width=True):
+                if manual_finish:
+                    st.session_state.barcode_input = manual_finish
+                    handle_scan()
         
 
     # --- KONDISI: FINISHING (Input Hasil) ---
