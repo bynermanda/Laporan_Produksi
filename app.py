@@ -518,35 +518,40 @@ else:
                 list_kode = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
                 
                 # Hanya 2 Baris Input
-                for i in range(1, 3):
-                    c_kod, c_men, c_ket = st.columns([1, 1, 2])
-                    k_sel = c_kod.selectbox(f"Kode {i}", options=list_kode, key=f"run_ab_kode_{i}")
-                    m_val = c_men.number_input(f"Menit {i}", min_value=0, step=1, key=f"run_ab_menit_{i}")
-                    kt_val = c_ket.text_input(f"Keterangan {i}", key=f"run_ab_ket_{i}")
+                if "ab_counter" not in st.session_state:
+                    st.session_state.ab_counter = 0
 
-                    if st.button(f"Kirim Abnormal {i}", key=f"btn_ab_{i}"):
-                        if k_sel != "" and m_val > 0:
-                            row_ab = {
-                                "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
-                                "Mesin": dp.get('line', ''),
-                                "Part_No": dp.get('part_no', ''),
-                                "Model": dp.get('model', ''),
-                                "Part_Name": dp.get('part_name', ''),
-                                "Urutan_Proses": dp.get('urutan_proses', ''),
-                                "Operator": nama_karyawan,
-                                "Kode_Abnormal": k_sel,
-                                "Total_Waktu": m_val,
-                                "Keterangan": kt_val
-                            }
-                            if simpan_ke_sheet(row_ab, "ABNORMAL"):
-                                st.toast(f"✅ Kode {k_sel} tersimpan!")
-                                time.sleep(1)
+                c_kod, c_men, c_ket = st.columns([1, 1, 2])
+                # Key ditambahkan counter agar saat counter naik, widget dianggap baru (kosong)
+                k_sel = c_kod.selectbox("Kode", options=list_kode, key=f"ab_kode_run_{st.session_state.ab_counter}")
+                m_val = c_men.number_input("Menit", min_value=0, step=1, key=f"ab_menit_run_{st.session_state.ab_counter}")
+                kt_val = c_ket.text_input("Keterangan", placeholder="Contoh: Mesin Down", key=f"ab_ket_run_{st.session_state.ab_counter}")
+
+                if st.button(f"Kirim Abnormal {i}", key=f"btn_ab_{i}"):
+                    if k_sel != "" and m_val > 0:
+                        row_ab = {
+                            "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
+                            "Mesin": dp.get('line', ''),
+                            "Part_No": dp.get('part_no', ''),
+                            "Model": dp.get('model', ''),
+                            "Part_Name": dp.get('part_name', ''),
+                            "Urutan_Proses": dp.get('urutan_proses', ''),
+                            "Operator": nama_karyawan,
+                            "Kode_Abnormal": k_sel,
+                            "Total_Waktu": m_val,
+                            "Keterangan": kt_val
+                        }
+                        if simpan_ke_sheet(row_ab, "ABNORMAL"):
+                            st.toast(f"✅ Kode {k_sel} tersimpan!")
+                            st.session_state.ab_counter += 1
+                            time.sleep(1)
                                 # Tidak perlu rerun total, cukup refresh state input jika ingin kosongkan
                         else:
                             st.error("Pilih Kode & Isi Menit!")
 
             st.divider()
 
+##-- LOGIKA START: Jika belum klik start, tampilkan tombol start. Setelah klik start, tampilkan status sudah mulai dan instruksi scan finish.
             if not st.session_state.get('sudah_start_diklik'):
                 st.write("SCAN KANBAN 1: Konfirmasi Mulai Kerja")
 
@@ -583,18 +588,16 @@ else:
                         else:
                             st.session_state.is_submitting = False # Reset jika gagal
                             st.error("❌ Gagal mencatat Start. Coba lagi!")
-
-                    # --- BAGIAN B: JIKA SUDAH START (Muncul Scanner Finish) ---
-                else:
-                    st.write("SCAN KANBAN 2: Scan KANBAN untuk FINISH")
-                    barcode_data = qrcode_scanner(key='scanner_finish_part')
-                    if barcode_data:
-                        st.session_state.barcode_input = barcode_data
-                        handle_scan() # Memproses perbandingan barcode di fungsi handle_scan
             else:
-                # TAMPILAN SETELAH START (Berwarna Hijau)
                 st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
                 st.info("Status saat ini: RUNNING. Scan KANBAN untuk FINISH.")
+
+                st.subheader("SCAN KANBAN 2: Scan KANBAN untuk FINISH")
+                barcode_data = qrcode_scanner(key='scanner_finish_part')
+                if barcode_data:
+                    st.session_state.barcode_input = barcode_data
+                    handle_scan()
+        
 
     # --- KONDISI: FINISHING (Input Hasil) ---
     elif status_kerja == "FINISHING":
@@ -710,7 +713,7 @@ else:
                 st.rerun()
         
         with col_res:
-            if st.button("🚫 Batal / Reset Scanner", type="secondary", use_container_width=True, key="btn_reset_merah"):##Pakai warna Merah
+            if st.button("🚫 Batal / Reset Scanner", type="secondary", use_container_width=True, key="btn_batal_running_fix"):##Pakai warna Merah
                 keys_to_clean = ['status_kerja', 'current_part', 'data_sph_terkirim', 'available_processes', 'waktu_start', 'waktu_end']
                 for k in keys_to_clean:
                     if k in st.session_state: 
