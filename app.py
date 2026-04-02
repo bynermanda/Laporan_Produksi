@@ -55,10 +55,6 @@ st.markdown("""
         color: white !important;
         border: 2px solid #CC0000 !important;
     }
-    div.stButton > button[key="btn_batal_running_fix"]:hover {
-        background-color: #CC0000 !important; /* Merah Gelap */
-        color: white !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
