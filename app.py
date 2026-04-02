@@ -52,6 +52,12 @@ st.markdown("""
             background-color: #CC0000 !important;
             color: white !important;
     }
+        /* 4. Warna Tombol Utama (Primary) */
+    div.stButton > button {
+        background-color: #00FF00 !important; /* Warna Hijau */
+        color: black !important;
+        border-radius: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
