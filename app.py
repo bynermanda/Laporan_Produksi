@@ -42,6 +42,13 @@ st.markdown("""
     h1, h2, h3, p, span, label {
         color: #ffffff !important;
     }
+
+    /* 4. Warna Tombol Utama (Primary) */
+    div.stButton > button {
+        background-color: #00FF00 !important; /* Warna Hijau */
+        color: black !important;
+        border-radius: 10px;
+    }
     /* Target spesifik tombol Batal berdasarkan KEY */
     div.stButton > button[key="btn_batal_running_fix"] {
         background-color: #FF0000 !important; /* Merah */
@@ -51,12 +58,6 @@ st.markdown("""
     div.stButton > button[key="btn_batal_running_fix"]:hover {
             background-color: #CC0000 !important;
             color: white !important;
-    }
-        /* 4. Warna Tombol Utama (Primary) */
-    div.stButton > button {
-        background-color: #00FF00 !important; /* Warna Hijau */
-        color: black !important;
-        border-radius: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -380,11 +381,22 @@ else:
 
     # --- KONDISI: IDLE (Siap Scan Part Baru) ---
     if status_kerja == "IDLE":
-        st.write("### 📸 Scan KANBAN untuk mulai")
+        st.write(" 📸 Scan KANBAN untuk mulai")
         barcode_part = qrcode_scanner(key='scanner_part_prod')
         if barcode_part:
             st.session_state.barcode_input = barcode_part
             handle_scan()
+
+        st.divider()
+
+        st.write("### ⌨️ Opsi 2: Input  Part NO. Manual")
+        manual_input = st.text_input("Ketik Part No / Data Kanban", key="manual_part_input").strip().upper()
+        if st.button("✅ Konfirmasi Input Manual", use_container_width=True):
+            if manual_input:
+                # Masukkan ke session state yang sama dengan yang digunakan scanner
+                st.session_state.barcode_input = manual_input
+                # Panggil fungsi yang sama, dia tidak akan tahu bedanya dari mana asal datanya
+                handle_scan()
         
         # TOMBOL CHECK-OUT MUNCUL DI SINI (Saat tidak sedang scan part)
         st.divider()
@@ -510,7 +522,7 @@ else:
             durasi_live = waktu_sekarang.replace(tzinfo=None) - st.session_state.waktu_start.replace(tzinfo=None)
             menit_live = int(durasi_live.total_seconds() / 60)
             jam_live = round(durasi_live.total_seconds() / 3600, 2)
-            st.info(f"⚡ **Proses Berjalan:** {dp['part_name']} | sec_pcs : {dp['sec_pcs']} | {dp['model']}")
+            st.info(f"⚡ **Proses Berjalan:** {dp['part_name']} | {dp['part_no']}")
             
             col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("Urutan", dp['urutan_proses'])
@@ -524,7 +536,9 @@ else:
             # --- BAGIAN BARU: INPUT ABNORMAL SAAT RUNNING ---
             with st.expander("⚠️ CATAT ABNORMAL / LOST TIME (Jika Ada)", expanded=False):
                 st.write("Input akan langsung tersimpan ke database tanpa menghentikan proses.")
-                list_kode = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
+                list_kode = ["A [Ganti Proses]", "B [Ganti/Tambah Coil]", "C [Perikasa ATA]", "D [Trial]", "E [2S]", "F [Briefing Rutin]", "G1 [Material NG dan Tukar Proses]",
+                            "G2 [Kualitas NG dan Tukar Proses]", "H [Tooling]", "I [Mesin Abnormal]", "K1 [Penaganan Kualitas NG]", "K2 [Penanganan dies NG]", "L [Kekurangan Material]",
+                            "M [Lain-Lain]", "N [No KANBAN Plan]", "O [DPMR]"]
                 
                 # Hanya 2 Baris Input
                 if "ab_counter" not in st.session_state:
@@ -534,7 +548,8 @@ else:
                 # Key ditambahkan counter agar saat counter naik, widget dianggap baru (kosong)
                 k_sel = c_kod.selectbox("Kode", options=list_kode, key=f"ab_kode_run_{st.session_state.ab_counter}")
                 m_val = c_men.number_input("Menit", min_value=0, step=1, key=f"ab_menit_run_{st.session_state.ab_counter}")
-                kt_val = c_ket.text_input("Keterangan", placeholder="Contoh: Mesin Down", key=f"ab_ket_run_{st.session_state.ab_counter}")
+                kt_input = c_ket.text_input("Keterangan", placeholder="Contoh: Mesin Down", key=f"ab_ket_run_{st.session_state.ab_counter}")
+                kt_val = kt_input.upper()
 
                 if st.button("🚀 Kirim Data Abnormal", use_container_width=True, key=f"btn_ab_submit_{st.session_state.ab_counter}"):
                     if k_sel != "" and m_val > 0:
