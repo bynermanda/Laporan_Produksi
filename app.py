@@ -49,6 +49,16 @@ st.markdown("""
         color: black !important;
         border-radius: 10px;
     }
+    /* Target spesifik tombol Batal berdasarkan KEY */
+    div.stButton > button[key="btn_batal_running_fix"] {
+        background-color: #FF0000 !important; /* Merah */
+        color: white !important;
+        border: 2px solid #CC0000 !important;
+    }
+    div.stButton > button[key="btn_batal_running_fix"]:hover {
+        background-color: #CC0000 !important; /* Merah Gelap */
+        color: white !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -576,9 +586,6 @@ else:
                     with st.spinner("Sedang mencatat ke sistem..."):
                         if simpan_ke_sheet(data_start, "START"):
                             st.session_state.sudah_start_diklik = True # Tandai sudah start
-                            st.session_state.status_kerja = "IDLE" # Reset ke IDLE untuk mencegah klik start lagi
-                            if 'current_part' in st.session_state:
-                                del st.session_state.current_part
 
                             st.session_state.is_submitting = False # Reset flag submit
                             st.balloons()
