@@ -552,7 +552,9 @@ else:
                 kt_val = kt_input.upper()
 
                 if st.button("🚀 Kirim Data Abnormal", use_container_width=True, key=f"btn_ab_submit_{st.session_state.ab_counter}"):
-                    if k_sel != "" and m_val > 0:
+                    if not st.session_state.get('sudah_start_diklik'):
+                        st.error("⚠️ Klik tombol START sebelum kirim data abnormal!")
+                    elif k_sel != "" and m_val > 0:
                         parts = k_sel.split(" [")
                         kode_hanya = parts[0]
                         uraian_abnormal = parts[1].replace("]", "") if len(parts) > 1 else "" # Ambil uraian dari dalam tanda kurung jika ada
@@ -615,7 +617,7 @@ else:
                             st.error("❌ Gagal mencatat Start. Coba lagi!")
             else:
                 st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
-                st.info("Status saat ini: RUNNING. Scan KANBAN untuk FINISH.")
+                st.info("Status saat ini: RUNNING. Restart untuk Finish dan scan dari awal.")
 
             st.divider()
 
@@ -625,7 +627,7 @@ else:
                 st.session_state.barcode_input = barcode_data
                 handle_scan()
             st.divider()
-            st.write("### ⌨️ Opsi 2: Input Manual (Jika Kamera Rusak)")
+            st.write("### ⌨️ Opsi 2: Input Manual (Part No harus sama dengan yang discan di START)")
             manual_finish = st.text_input("Ketik Part No untuk Finish", key="manual_part_finish_input").strip().upper()
             if st.button("✅ Konfirmasi Input Manual Finish", use_container_width=True):
                 if manual_finish:
