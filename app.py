@@ -371,7 +371,7 @@ else:
 
     # --- KONDISI: IDLE (Siap Scan Part Baru) ---
     if status_kerja == "IDLE":
-        st.write("### 📸 Scan Barcode Part untuk Mulai")
+        st.write("### 📸 Scan KANBAN untuk mulai")
         barcode_part = qrcode_scanner(key='scanner_part_prod')
         if barcode_part:
             st.session_state.barcode_input = barcode_part
@@ -512,8 +512,43 @@ else:
 
             st.divider()
 
+            # --- BAGIAN BARU: INPUT ABNORMAL SAAT RUNNING ---
+            with st.expander("⚠️ CATAT ABNORMAL / LOST TIME (Jika Ada)", expanded=False):
+                st.write("Input akan langsung tersimpan ke database tanpa menghentikan proses.")
+                list_kode = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
+                
+                # Hanya 2 Baris Input
+                for i in range(1, 3):
+                    c_kod, c_men, c_ket = st.columns([1, 1, 2])
+                    k_sel = c_kod.selectbox(f"Kode {i}", options=list_kode, key=f"run_ab_kode_{i}")
+                    m_val = c_men.number_input(f"Menit {i}", min_value=0, step=1, key=f"run_ab_menit_{i}")
+                    kt_val = c_ket.text_input(f"Keterangan {i}", key=f"run_ab_ket_{i}")
+
+                    if st.button(f"Kirim Abnormal {i}", key=f"btn_ab_{i}"):
+                        if k_sel != "" and m_val > 0:
+                            row_ab = {
+                                "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
+                                "Mesin": dp.get('line', ''),
+                                "Part_No": dp.get('part_no', ''),
+                                "Model": dp.get('model', ''),
+                                "Part_Name": dp.get('part_name', ''),
+                                "Urutan_Proses": dp.get('urutan_proses', ''),
+                                "Operator": nama_karyawan,
+                                "Kode_Abnormal": k_sel,
+                                "Total_Waktu": m_val,
+                                "Keterangan": kt_val
+                            }
+                            if simpan_ke_sheet(row_ab, "ABNORMAL"):
+                                st.toast(f"✅ Kode {k_sel} tersimpan!")
+                                time.sleep(1)
+                                # Tidak perlu rerun total, cukup refresh state input jika ingin kosongkan
+                        else:
+                            st.error("Pilih Kode & Isi Menit!")
+
+            st.divider()
+
             if not st.session_state.get('sudah_start_diklik'):
-                st.write("### Langkah 1: Konfirmasi Mulai Kerja")
+                st.write("SCAN KANBAN 1: Konfirmasi Mulai Kerja")
 
                 if "is_submitting" not in st.session_state:
                     st.session_state.is_submitting = False
@@ -551,11 +586,15 @@ else:
 
                     # --- BAGIAN B: JIKA SUDAH START (Muncul Scanner Finish) ---
                 else:
-                    st.write("### Langkah 2: Scan Barcode yang SAMA untuk FINISH")
+                    st.write("SCAN KANBAN 2: Scan KANBAN untuk FINISH")
                     barcode_data = qrcode_scanner(key='scanner_finish_part')
                     if barcode_data:
                         st.session_state.barcode_input = barcode_data
-                        handle_scan() # Memproses perbandingan barcode di fungsi handle_sca
+                        handle_scan() # Memproses perbandingan barcode di fungsi handle_scan
+            else:
+                # TAMPILAN SETELAH START (Berwarna Hijau)
+                st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
+                st.info("Status saat ini: RUNNING. Scan KANBAN untuk FINISH.")
 
     # --- KONDISI: FINISHING (Input Hasil) ---
     elif status_kerja == "FINISHING":
@@ -568,7 +607,7 @@ else:
             durasi = waktu_end.replace(tzinfo=None) - waktu_start.replace(tzinfo=None)
             jam_total = round(durasi.total_seconds() / 60, 2)
 
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             act_raw = c1.text_input("Jumlah ACT", value="0")
             ng_raw = c2.text_input("Jumlah NG", value="0")
             try:
@@ -578,6 +617,8 @@ else:
                 act = 0
                 ng = 0
             c3.metric("Durasi", f"{jam_total} Menit", delta=f"{round(jam_total/60, 2)} Jam")
+            waktu_mulai_format = st.session_state.waktu_start.strftime("%H:%M:%S")
+            c4.metric("Waktu Start", waktu_mulai_format)
 
             # --- LOGIKA POTONGAN ISTIRAHAT ---
             st.write("---")
@@ -630,68 +671,34 @@ else:
 
             # --- FORM ABNORMAL (Muncul setelah SPH) ---
         if st.session_state.get('data_sph_terkirim'):
-            #Tampilan metrik SPH dan Lost Time
+            st.divider()
+            st.subheader("📊 Ringkasan Hasil Produksi")
+            
             c1, c2, c3 = st.columns(3)
             c1.metric("Persentase Produksi", f"{persen_prod:.2f} %")
-            c2.metric("Total Jam", f"{round(durasi_bersih/60, 2)} Jam")
+            c2.metric("Total Jam Kerja", f"{round(durasi_bersih/60, 2)} Jam")
             c3.metric("Rasio NG", f"{(ng/act * 100) if act > 0 else 0:.2f} %")
 
+            st.info("DATA SPH sudah tercatat.")
             st.divider()
-            with st.form("form_abnormal_baru"):
-                st.subheader("⚠️ Input Detail Abnormal")
-                st.write("Silakan pilih kode, isi menit, dan keterangan (jika ada).")
-
-                list_kode = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
-                baris_input_abnormal = []
-
-            # Membuat 10 baris input
-                for i in range(1, 11):
-                    col_kode, col_menit, col_ket = st.columns([2, 1, 3])
-            
-                    with col_kode:
-                        kode_sel = st.selectbox(f"Kode {i}", options=list_kode, key=f"ab_kode_{i}")
-                    with col_menit:
-                        menit_val = st.number_input(f"Jumlah Menit", min_value=0, step=1, key=f"ab_menit_{i}")
-                    with col_ket:
-                        ket_val = st.text_input(f"Keterangan {i}", placeholder="Contoh: Ganti Tool", key=f"ab_ket_{i}")
-            
-            # Simpan hanya jika kode dipilih dan menit > 0
-                    if kode_sel != "" and menit_val > 0:
-                        baris_input_abnormal.append({
-                        "kode": kode_sel,
-                        "durasi": menit_val,
-                        "keterangan": ket_val
-                    })
-
-                if st.form_submit_button("🏁 KONFIRMASI & RESET SCANNER"):
-                    if baris_input_abnormal:
-                        for item in baris_input_abnormal:
-                            row_ab = {
-                                "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
-                                "Mesin": dp.get('line', ''),
-                                "Part_No": dp.get('part_no', ''),
-                                "Model": dp.get('model', ''),
-                                "Part_Name": dp.get('part_name', ''),
-                                "Urutan_Proses": dp.get('urutan_proses', ''),
-                                "Operator": nama_karyawan,
-                                "Kode_Abnormal": item['kode'],
-                                "Total_Waktu": item['durasi'],
-                                "Keterangan": item['keterangan']
-                            }
-                            simpan_ke_sheet(row_ab, "ABNORMAL")
-                        st.success(f"✅ {len(baris_input_abnormal)} Data Abnormal Berhasil Disimpan!")
-                        
-                        # RESET SEMUA
-                        for k in ['status_kerja', 'current_part', 'waktu_start', 'waktu_end', 'data_sph_terkirim', 'available_processes', 'sudah_start_diklik','barcode_input','is_submitting','proses_data','abnormal_data']:
-                            if k in st.session_state: del st.session_state[k]
+    
+            if st.button("🏁 SELESAI & SCAN PART BARU", type="primary", use_container_width=True):
+                # RESET SEMUA SESSION STATE
+                keys_to_reset = [
+                    'status_kerja', 'current_part', 'waktu_start', 'waktu_end', 
+                    'data_sph_terkirim', 'available_processes', 'sudah_start_diklik',
+                    'barcode_input', 'is_submitting', 'proses_data', 'abnormal_data'
+                ]
+                for k in keys_to_reset:
+                    if k in st.session_state: 
+                        del st.session_state[k]
 
                         # Set ulang status ke IDLE agar siap scan part baru
-                        st.session_state.status_kerja = "IDLE"
-                        
-                        st.balloons()
-                        st.success("✅ Semua Laporan Selesai!")
-                        time.sleep(2)
-                        st.rerun()
+                st.session_state.status_kerja = "IDLE"
+                st.balloons()
+                st.success("✅ Laporan Proses selesai! Siap untuk scan part baru.")
+                time.sleep(2)
+                st.rerun()
 
     #--- 5. KONDISI: IDLE (AWAL) atau automatic time --- 
     if st.session_state.get('status_kerja') == "RUNNING":
@@ -699,12 +706,11 @@ else:
         col_ref, col_res = st.columns(2)
     
         with col_ref:
-            if st.button("🔄 Perbarui Waktu", use_container_width=True):
+            if st.button("🔄 Perbarui Waktu", use_container_width=True, key="btn_reset_merah"):
                 st.rerun()
-                st.caption("⏱️ Klik untuk update durasi berjalan")
         
         with col_res:
-            if st.button("🚫 Batal / Reset Scanner", type="secondary", use_container_width=True):
+            if st.button("🚫 Batal / Reset Scanner", type="secondary", use_container_width=True, key="btn_reset_merah"):##Pakai warna Merah
                 keys_to_clean = ['status_kerja', 'current_part', 'data_sph_terkirim', 'available_processes', 'waktu_start', 'waktu_end']
                 for k in keys_to_clean:
                     if k in st.session_state: 
@@ -712,7 +718,7 @@ else:
                 st.rerun()
     else:
     # Jika tidak dalam kondisi RUNNING, cukup tampilkan tombol Reset saja
-        if st.button("Batal / Reset Scanner", type="secondary"):
+        if st.button("Batal / Reset Scanner", type="secondary", key="btn_reset_biru"):
             keys_to_clean = ['status_kerja', 'current_part', 'data_sph_terkirim', 'available_processes']
             for k in keys_to_clean:
                 if k in st.session_state: 
