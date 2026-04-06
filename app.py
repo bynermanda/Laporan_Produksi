@@ -169,7 +169,7 @@ def simpan_ke_sheet(data_dict, tipe):
         elif tipe == "ABNORMAL":
             # Hanya ambil data jika data tersebut belum ada di memori (session_state)
             if 'abnormal_data' not in st.session_state:
-                    st.session_state.abnormal_data = [conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=2)]
+                    st.session_state.abnormal_data = [conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=3600)]
             df_abnormal = st.session_state.abnormal_data[0]
             new_row = pd.DataFrame([data_dict])
             updated_df = pd.concat([df_abnormal, new_row], ignore_index=True)
@@ -375,7 +375,7 @@ if not nama_karyawan:
                         'model': data_aktif.get('Model', ''),
                         'line': data_aktif.get('Line', ''),
                         'urutan_proses': data_aktif.get('Urutan_Proses', ''),
-                        'sec_pcs': data_aktif.get('SEC /PCS', 0),
+                        'sec_pcs': float(data_aktif.get('Sec_Pcs', 0)),
                         'Actual_Line': data_aktif.get('Actual_Line', '')
                     }
                     
@@ -586,6 +586,7 @@ else:
     # --- KONDISI: RUNNING (Sedang Kerja) ---
     elif status_kerja == "RUNNING":
         dp = st.session_state.get('current_part')
+        
         if dp:
             waktu_sekarang = get_waktu_wib()
             durasi_live = waktu_sekarang.replace(tzinfo=None) - st.session_state.waktu_start.replace(tzinfo=None)
@@ -668,6 +669,7 @@ else:
                         "Line": dp['line'],
                         "Urutan_Proses": dp['urutan_proses'],
                         "Actual_Line": dp.get('Actual_Line', ""),
+                        "Sec_Pcs": dp['Sec_Pcs'],
                         "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
                         "Waktu_Selesai": "",
                         "ACT": 0, "NG": 0, "Status": "START"
@@ -707,9 +709,9 @@ else:
     # --- KONDISI: FINISHING (Input Hasil) ---
     elif status_kerja == "FINISHING":
         dp = st.session_state.get('current_part')
+        st.write("DEBUG DATA:", dp)
         if dp:
             st.subheader(f"📝 Laporan Akhir: {dp['part_name']}")
-            st.write("DEBUG DATA:", dp)
             
             waktu_start = st.session_state.get('waktu_start', get_waktu_wib())
             waktu_end = st.session_state.get('waktu_end', get_waktu_wib())
