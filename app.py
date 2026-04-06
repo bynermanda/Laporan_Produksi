@@ -4,7 +4,7 @@ from streamlit_qrcode_scanner import qrcode_scanner
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import pytz
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 import time
 
 # SETUP THEME LANGSUNG DI KODE
@@ -383,9 +383,13 @@ if not nama_karyawan:
                     # Rekonstruksi Waktu Mulai
                     try:
                         waktu_str = data_aktif['Waktu_Mulai']
-                        st.session_state.waktu_start = datetime.strptime(waktu_str, "%H:%M:%S")
-                    except:
-                        st.session_state.waktu_start = get_waktu_wib()
+                        if " " in waktu_str:
+                            waktu_str = waktu_str.split(" ")[1]
+                        jam_obj = datetime.strptime(waktu_str, "%H:%M:%S").time()
+                        st.session_state.waktu_start = datetime.combine(date.today(), jam_obj)
+                    except Exception as e:
+                        # Jika gagal, baru gunakan waktu sekarang sebagai cadangan
+                        st.session_state.waktu_start = get_waktu_wib().replace(tzinfo=None)
 
                     st.success(f"🔄 Melanjutkan proses: {data_aktif.get('Part_Name')}")
                 else:
