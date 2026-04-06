@@ -669,7 +669,7 @@ else:
                         "Line": dp['line'],
                         "Urutan_Proses": dp['urutan_proses'],
                         "Actual_Line": dp.get('Actual_Line', ""),
-                        "Sec_Pcs": dp['Sec_Pcs'],
+                        "Sec_Pcs": dp['sec_pcs'],
                         "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
                         "Waktu_Selesai": "",
                         "ACT": 0, "NG": 0, "Status": "START"
