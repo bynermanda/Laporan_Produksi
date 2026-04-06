@@ -583,7 +583,7 @@ else:
             st.info(f"⚡ **Proses Berjalan:** {dp['Part_Name']} | {dp['Part_No']}")
             
             col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Urutan", dp['urutan_proses'])
+            col1.metric("Urutan", dp['Urutan_Proses'])
             col2.metric("Target Sec/Pcs", dp['sec_pcs'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
