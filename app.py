@@ -450,7 +450,7 @@ else:
 
     # --- KONDISI: IDLE (Siap Scan Part Baru) ---
     if status_kerja == "IDLE":
-        st.write(" ### 📸 OPSI 1: Scan KANBAN untuk mulai")
+        st.write(" ### 📸 Opsi 1: Scan KANBAN untuk mulai proses")
         barcode_part = qrcode_scanner(key='scanner_part_prod')
         if barcode_part:
             st.session_state.barcode_input = barcode_part
@@ -565,7 +565,7 @@ else:
             actual_line = st.selectbox("Pilih Line Produksi (Actual Line)", options=list_line)
             # Tampilkan pilihan urutan proses berdasarkan part yang discan
             opsi_display = {f"{p['URUTAN']} | {p['Part_Name']}": p for p in data_pilihan}
-            pilihan_user = st.selectbox("Pilih Urutan Proses Produksi?", options=list(opsi_display.keys()))
+            pilihan_user = st.selectbox("Pilih Urutan Proses Produksi", options=list(opsi_display.keys()))
 
             if st.button("Konfirmasi & Mulai Kerja"):
                 detail = opsi_display[pilihan_user]
@@ -604,7 +604,7 @@ else:
             st.divider()
 
             # --- BAGIAN BARU: INPUT ABNORMAL SAAT RUNNING ---
-            with st.expander("⚠️ CATAT ABNORMAL / LOST TIME (Jika Ada)", expanded=False):
+            with st.expander("⚠️ INPUT ABNORMAL", expanded=False):
                 st.write("Input akan langsung tersimpan ke database tanpa menghentikan proses.")
                 list_kode = ["A [Ganti Proses]", "B [Ganti/Tambah Coil]", "C [Perikasa ATA]", "D [Trial]", "E [2S]", "F [Briefing Rutin]", "G1 [Material NG dan Tukar Proses]",
                             "G2 [Kualitas NG dan Tukar Proses]", "H [Tooling]", "I [Mesin Abnormal]", "K1 [Penaganan Kualitas NG]", "K2 [Penanganan dies NG]", "L [Kekurangan Material]",
@@ -623,7 +623,7 @@ else:
 
                 if st.button("🚀 Kirim Data Abnormal", use_container_width=True, key=f"btn_ab_submit_{st.session_state.ab_counter}"):
                     if not st.session_state.get('sudah_start_diklik'):
-                        st.error("⚠️ Klik tombol START sebelum kirim data abnormal!")
+                        st.error("⚠️ Klik tombol START PROSES sebelum kirim data abnormal!")
                     elif k_sel != "" and m_val > 0:
                         parts = k_sel.split(" [")
                         kode_hanya = parts[0]
@@ -653,11 +653,11 @@ else:
 
 ##-- LOGIKA START: Jika belum klik start, tampilkan tombol start. Setelah klik start, tampilkan status sudah mulai dan instruksi scan finish.
             if not st.session_state.get('sudah_start_diklik'):
-                st.write("SCAN KANBAN 1: Konfirmasi Mulai Kerja")
+                st.write("Konfirmasi Mulai Kerja (Pastikan data telah sesuai)")
 
                 if "is_submitting" not in st.session_state:
                     st.session_state.is_submitting = False
-                if st.button("🚀 Konfirmasi Kirim Start", use_container_width=True, disabled=st.session_state.is_submitting):
+                if st.button("🚀 Konfirmasi Start Proses", use_container_width=True, disabled=st.session_state.is_submitting):
                     st.session_state.is_submitting = True
                     data_start = {
                         "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
@@ -687,19 +687,19 @@ else:
                             st.session_state.is_submitting = False # Reset jika gagal
                             st.error("❌ Gagal mencatat Start. Coba lagi!")
             else:
-                st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
-                st.info("Status saat ini: RUNNING. Restart untuk Finish dan scan dari awal.")
+                st.markdown("### <span style='color: #00FF00;'>✅ Proses Sudah Dimulai (Selamat Bekerja dan Utamanakan Safety)</span>", unsafe_allow_html=True)
+                st.info("Status saat ini: RUNNING. Scan KANBAN dibawah untuk Finsih proses")
 
             st.divider()
 
-            st.subheader("SCAN KANBAN 2: Scan KANBAN untuk FINISH")
+            st.subheader("SCAN KANBAN : Scan KANBAN untuk FINISH")
             barcode_data = qrcode_scanner(key='scanner_finish_part')
             if barcode_data:
                 st.session_state.barcode_input = barcode_data
                 handle_scan()
             st.divider()
-            st.write("### ⌨️ Opsi 2: Input Manual (Part No harus sama dengan yang discan di START)")
-            manual_finish = st.text_input("Ketik Part No untuk Finish", key="manual_part_finish_input").strip().upper()
+            st.write("### ⌨️ Input Manual (Part No harus sama)")
+            manual_finish = st.text_input("Ketik Part No", key="manual_part_finish_input").strip().upper()
             if st.button("✅ Konfirmasi Input Manual Finish", use_container_width=True):
                 if manual_finish:
                     st.session_state.barcode_input = manual_finish
@@ -828,7 +828,7 @@ else:
                 st.rerun()
     else:
     # Jika tidak dalam kondisi RUNNING, cukup tampilkan tombol Reset saja
-        if st.button("Batal / Reset Scanner", type="secondary", key="btn_reset_biru"):
+        if st.button(" ❌ Batal / Reset Scanner", type="secondary", key="btn_reset_biru"):
             keys_to_clean = ['status_kerja', 'current_part', 'data_sph_terkirim', 'available_processes']
             for k in keys_to_clean:
                 if k in st.session_state: 
