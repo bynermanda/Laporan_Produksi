@@ -370,7 +370,15 @@ if not nama_karyawan:
                     st.session_state.sudah_start_diklik = True
                     
                     # Bangun kembali state part agar tampilan Running muncul
-                    st.session_state.current_part = st.session_state.current_part = data_aktif.copy()
+                    st.session_state.current_part = {
+                        'part_no': data_aktif.get('Part_No', ''),
+                        'part_name': data_aktif.get('Part_Name', ''),
+                        'model': data_aktif.get('Model', ''),
+                        'line': data_aktif.get('Line', ''),
+                        'urutan_proses': data_aktif.get('Urutan_Proses', ''),
+                        'sec_pcs': data_aktif.get('sec_pcs', 0),
+                        'Actual_Line': data_aktif.get('Actual_Line', '')
+                    }
                     
                     # Rekonstruksi Waktu Mulai
                     try:
@@ -580,11 +588,11 @@ else:
             durasi_live = waktu_sekarang.replace(tzinfo=None) - st.session_state.waktu_start.replace(tzinfo=None)
             menit_live = int(durasi_live.total_seconds() / 60)
             jam_live = round(durasi_live.total_seconds() / 3600, 2)
-            st.info(f"⚡ **Proses Berjalan:** {dp['Part_Name']} | {dp['Part_No']}")
+            st.info(f"⚡ **Proses Berjalan:** {dp['part_name']} | {dp['part_no']}")
             
             col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Urutan", dp['Urutan_Proses'])
-            col2.metric("Target Sec/Pcs", dp['SEC /PCS'])
+            col1.metric("Urutan", dp['urutan_proses'])
+            col2.metric("Target Sec/Pcs", dp['sec_pcs'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
             col5.metric("Actual Line", dp.get('Actual_Line', ''))
