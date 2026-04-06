@@ -370,15 +370,7 @@ if not nama_karyawan:
                     st.session_state.sudah_start_diklik = True
                     
                     # Bangun kembali state part agar tampilan Running muncul
-                    st.session_state.current_part = {
-                        'part_no': data_aktif.get('Part_No', ''),
-                        'part_name': data_aktif.get('Part_Name', ''),
-                        'model': data_aktif.get('Model', ''),
-                        'line': data_aktif.get('Line', ''),
-                        'urutan_proses': data_aktif.get('Urutan_Proses', ''),
-                        'sec_pcs': data_aktif.get('sec_pcs', 0),
-                        'Actual_Line': data_aktif.get('Actual_Line', '')
-                    }
+                    st.session_state.current_part = st.session_state.current_part = data_aktif.copy()
                     
                     # Rekonstruksi Waktu Mulai
                     try:
