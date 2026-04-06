@@ -687,7 +687,7 @@ else:
                             st.error("❌ Gagal mencatat Start. Coba lagi!")
             else:
                 st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
-                st.info("Status saat ini: RUNNING. Scan dibawah untuk FINISH.")
+                st.info("Status saat ini: RUNNING. Restart untuk Finish dan scan dari awal.")
 
             st.divider()
 
@@ -748,12 +748,12 @@ else:
             total_potongan = sum([DAFTAR_BREAK[item] for item in pilihan_break]) + extra_custom
 
             # Kalkulasi SPH
-            std_dari_state = float(st.session_state.current_part.get('sec_pcs', 0))
-            standar_input = (dp['sec_pcs'] * act) / 60 if act > 0 else 0
+            val_sec_pcs = float(dp.get('sec_pcs', dp.get('Sec_Pcs', 0)))
+            standar_input = (val_sec_pcs * act) / 60 if act > 0 else 0
             ## Dari sini Jam_Total dikurangi potongan istirahat
             durasi_bersih = max(0, jam_total - total_potongan)
             st.info(f"⏱️ **Durasi Bersih:** {durasi_bersih} Menit (Sudah dipotong {total_potongan} menit)")
-            persen_prod = round((standar_input / durasi_bersih) * 100, 2) if durasi_bersih > 0 and std_dari_state > 0 else 0.0
+            persen_prod = round((standar_input / durasi_bersih) * 100, 2) if durasi_bersih > 0 and val_sec_pcs > 0 else 0.0
 
             if not st.session_state.get('data_sph_terkirim'):
                 if st.button("🚀 Kirim Data SPH", use_container_width=True):
