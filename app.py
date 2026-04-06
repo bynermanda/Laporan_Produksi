@@ -204,7 +204,6 @@ def cek_proses_aktif(nik_karyawan):
             return None
         
         # 2. Filter berdasarkan NIK dan Status yang masih 'START'
-        # Pastikan format NIK konsisten (string/angka)
         df['NIK'] = df['NIK'].astype(str).str.replace("'", "")
         nik_clean = str(nik_karyawan).replace("'", "")
         
@@ -376,7 +375,7 @@ if not nama_karyawan:
                         'model': data_aktif.get('Model', ''),
                         'line': data_aktif.get('Line', ''),
                         'urutan_proses': data_aktif.get('Urutan_Proses', ''),
-                        'sec_pcs': data_aktif.get('sec_pcs', 0),
+                        'sec_pcs': data_aktif.get('SEC /PCS', 0),
                         'Actual_Line': data_aktif.get('Actual_Line', '')
                     }
                     
@@ -710,7 +709,6 @@ else:
         dp = st.session_state.get('current_part')
         if dp:
             st.subheader(f"📝 Laporan Akhir: {dp['part_name']}")
-            st.write("DEBUG DATA:", dp)
             
             waktu_start = st.session_state.get('waktu_start', get_waktu_wib())
             waktu_end = st.session_state.get('waktu_end', get_waktu_wib())
