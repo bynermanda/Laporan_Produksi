@@ -710,6 +710,7 @@ else:
         dp = st.session_state.get('current_part')
         if dp:
             st.subheader(f"📝 Laporan Akhir: {dp['part_name']}")
+            st.write("DEBUG DATA:", dp)
             
             waktu_start = st.session_state.get('waktu_start', get_waktu_wib())
             waktu_end = st.session_state.get('waktu_end', get_waktu_wib())
