@@ -687,7 +687,7 @@ else:
                             st.error("❌ Gagal mencatat Start. Coba lagi!")
             else:
                 st.markdown("### <span style='color: #00FF00;'>✅ Langkah 1: Proses Sudah Dimulai (START)</span>", unsafe_allow_html=True)
-                st.info("Status saat ini: RUNNING. Restart untuk Finish dan scan dari awal.")
+                st.info("Status saat ini: RUNNING. Scan dibawah untuk FINISH.")
 
             st.divider()
 
