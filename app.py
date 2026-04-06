@@ -192,6 +192,32 @@ def get_last_active_row(df, nama):
         return active_rows.index[-1] + 2
     return None
 
+##--- FUNGSI BANTU: CEK PROSES AKTIF (START) UNTUK OPERATOR ---
+def cek_proses_aktif(nik_karyawan):
+    """
+    Mencari data di sheet START yang statusnya belum selesai 
+    untuk NIK tertentu pada hari ini.
+    """
+    try:
+        df = conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)
+        if df.empty:
+            return None
+        
+        # 2. Filter berdasarkan NIK dan Status yang masih 'START'
+        # Pastikan format NIK konsisten (string/angka)
+        df['NIK'] = df['NIK'].astype(str).str.replace("'", "")
+        nik_clean = str(nik_karyawan).replace("'", "")
+        
+        proses_ongoing = df[(df['NIK'] == nik_clean) & (df['Status'] == 'START')]
+        
+        if not proses_ongoing.empty:
+            # Ambil baris terakhir jika ada lebih dari satu
+            return proses_ongoing.iloc[-1].to_dict()
+        return None
+    except Exception as e:
+        st.error(f"Error pengecekan data: {e}")
+        return None
+
 # --- LOGIKA PROSES SCAN ---
 def handle_scan():
     raw_scan = st.session_state.barcode_input.strip()
@@ -313,33 +339,64 @@ st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
 if not nama_karyawan:
     st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
     barcode_id = qrcode_scanner(key='scanner_id_operator')
+    
     if barcode_id:
-        # Sanitasi & Split (seperti kode sebelumnya)
         if ";" in barcode_id:
             raw_nik = barcode_id.split(';')[0].strip()
             raw_nama = barcode_id.split(';')[1].strip()
 
-            # Normalisasi untuk perbandingan (Hapus Titik)
             nik_scan_clean = raw_nik.replace(".", "")
             nik_master_clean = [str(n).replace(".", "").strip() for n in st.session_state.list_nik_terdaftar]
             
-            # --- INI FILTRASI AUTHENTICATION-NYA ---
             if nik_scan_clean in nik_master_clean:
+                # 1. Simpan Identitas Dasar
                 st.session_state.nik_karyawan = raw_nik
                 st.session_state.nama_terpilih = raw_nama
+                st.session_state.is_sudah_checkin = False 
                 
-                # KUNCI PENTING: Set status check-in ke False setiap kali scan nama baru
-                st.session_state.is_sudah_checkin = False # Paksa cek ulang ke database
                 if 'data_waktu_kerja' in st.session_state:
-                    del st.session_state.data_waktu_kerja # Hapus cache lama
+                    del st.session_state.data_waktu_kerja 
+
+                # ---------------------------------------------------------
+                # LOGIKA BARU: CEK AUTO-RESUME PROSES JIKA ADA START YANG BELUM FINISH
+                # ---------------------------------------------------------
+                with st.spinner("Mengecek status kerja terakhir..."):
+                    # Panggil fungsi cek_proses_aktif yang menggunakan conn.read()
+                    data_aktif = cek_proses_aktif(raw_nik) 
                 
-                st.success(f"✅ Terverifikasi: {raw_nama}")
-                time.sleep(0.5) 
+                if data_aktif:
+                    # JIKA ADA DATA START YANG BELUM FINISH:
+                    st.session_state.status_kerja = "RUNNING"
+                    st.session_state.sudah_start_diklik = True
+                    
+                    # Bangun kembali state part agar tampilan Running muncul
+                    st.session_state.current_part = {
+                        'part_no': data_aktif.get('Part_No', ''),
+                        'part_name': data_aktif.get('Part_Name', ''),
+                        'model': data_aktif.get('Model', ''),
+                        'line': data_aktif.get('Line', ''),
+                        'urutan_proses': data_aktif.get('Urutan_Proses', ''),
+                        'sec_pcs': data_aktif.get('sec_pcs', 0),
+                        'Actual_Line': data_aktif.get('Actual_Line', '')
+                    }
+                    
+                    # Rekonstruksi Waktu Mulai
+                    try:
+                        waktu_str = data_aktif['Waktu_Mulai']
+                        st.session_state.waktu_start = datetime.strptime(waktu_str, "%H:%M:%S")
+                    except:
+                        st.session_state.waktu_start = get_waktu_wib()
+
+                    st.success(f"🔄 Melanjutkan proses: {data_aktif.get('Part_Name')}")
+                else:
+                    st.session_state.status_kerja = "IDLE" 
+                    st.success(f"✅ Terverifikasi: {raw_nama}")
+                
+                time.sleep(1) 
                 st.rerun()
 
             else:
-                st.error(f"🚫 Akses Ditolak! NIK {raw_nik} tidak terdaftar di Master Karyawan.")
-                st.warning("Pastikan Anda menggunakan ID Card resmi atau hubungi Admin.")
+                st.error(f"🚫 Akses Ditolak! NIK {raw_nik} tidak terdaftar.")
                 time.sleep(2)
                 st.rerun()
 
@@ -385,7 +442,7 @@ elif not is_sudah_checkin:
 # LAYAR 3 & 4: SUDAH CHECK-IN (AREA PRODUKSI)
 else:
     st.success(f"👷 Operator: **{nama_karyawan}**|**{nik_karyawan}** | Sesi Aktif")
-    
+
     status_kerja = st.session_state.get('status_kerja', 'IDLE')
 
     # --- KONDISI: IDLE (Siap Scan Part Baru) ---
@@ -399,7 +456,7 @@ else:
         st.divider()
 
         st.write("### ⌨️ Opsi 2: Input  Part No. Manual")
-        manual_input = st.text_input("Ketik Part No / Data Kanban", key="manual_part_input").strip().upper()
+        manual_input = st.text_input("Ketik Part No.", key="manual_part_input").strip().upper()
         if st.button("✅ Konfirmasi Input Manual", use_container_width=True):
             if manual_input:
                 # Masukkan ke session state yang sama dengan yang digunakan scanner
