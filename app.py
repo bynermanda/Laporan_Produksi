@@ -47,14 +47,26 @@ st.markdown("""
         color: black !important;
         border-radius: 10px;
     }
+    div.stButton > button[kind="secondary"][key="btn_reset_biru"],
     div.stButton > button[key="btn_reset_biru"] {
-        background-color: #FF0000 !important; /* Merah */
+        background: linear-gradient(45deg, #FF4444, #CC0000) !important;
         color: white !important;
-        border: 2px solid #CC0000 !important;
+        border: 2px solid #990000 !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        transition: all 0.3s ease !important;
     }
+    div.stButton > button[kind="secondary"][key="btn_reset_biru"]:hover,
     div.stButton > button[key="btn_reset_biru"]:hover {
-            background-color: #CC0000 !important;
-            color: white !important;
+        background: linear-gradient(45deg, #CC0000, #990000) !important;
+        color: white !important;
+        transform: scale(1.05) !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
+    }
+    div.stButton > button[kind="secondary"][key="btn_reset_biru"]:active,
+    div.stButton > button[key="btn_reset_biru"]:active {
+        background: #990000 !important;
+        transform: scale(0.98) !important;
     }
     </style>
     """, unsafe_allow_html=True)
