@@ -169,7 +169,7 @@ def simpan_ke_sheet(data_dict, tipe):
         elif tipe == "ABNORMAL":
             # Hanya ambil data jika data tersebut belum ada di memori (session_state)
             if 'abnormal_data' not in st.session_state:
-                    st.session_state.abnormal_data = [conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=3600)]
+                    st.session_state.abnormal_data = [conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=0)]
             df_abnormal = st.session_state.abnormal_data[0]
             new_row = pd.DataFrame([data_dict])
             updated_df = pd.concat([df_abnormal, new_row], ignore_index=True)
@@ -687,7 +687,7 @@ else:
                             st.session_state.is_submitting = False # Reset jika gagal
                             st.error("❌ Gagal mencatat Start. Coba lagi!")
             else:
-                st.markdown("### <span style='color: #00FF00;'>✅ Proses Sudah Dimulai (Selamat Bekerja dan Utamanakan Safety)</span>", unsafe_allow_html=True)
+                st.markdown("### <span style='color: #00FF00;'>✅ Proses Sudah Dimulai (Selamat Bekerja dan Utamakan Safety)</span>", unsafe_allow_html=True)
                 st.info("Status saat ini: RUNNING. Scan KANBAN dibawah untuk Finsih proses")
 
             st.divider()
@@ -698,7 +698,7 @@ else:
                 st.session_state.barcode_input = barcode_data
                 handle_scan()
             st.divider()
-            st.write("### ⌨️ Input Manual (Part No harus sama)")
+            st.write("### ⌨️ Input KANBAN Manual")
             manual_finish = st.text_input("Ketik Part No", key="manual_part_finish_input").strip().upper()
             if st.button("✅ Konfirmasi Input Manual Finish", use_container_width=True):
                 if manual_finish:
