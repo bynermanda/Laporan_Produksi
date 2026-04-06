@@ -168,18 +168,21 @@ def simpan_ke_sheet(data_dict, tipe):
             
         elif tipe == "ABNORMAL":
             # Hanya ambil data jika data tersebut belum ada di memori (session_state)
-            if 'abnormal_data' not in st.session_state:
-                    df_existing = conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=0)
+            try:
+                df_existing = conn.read(spreadsheet=URL_KITA, worksheet="ABNORMAL", ttl=0)
             
-            new_row = pd.DataFrame([data_dict])
-            updated_df = pd.concat([df_existing, new_row], ignore_index=True)
-            # Update ke sheet Abnormal
-            conn.update(spreadsheet=URL_KITA, worksheet="ABNORMAL", data=updated_df)
-        
-            st.cache_data.clear()
-            if 'abnormal_data' in st.session_state:
-                del st.session_state.abnormal_data
-            return True
+                new_row = pd.DataFrame([data_dict])
+                updated_df = pd.concat([df_existing, new_row], ignore_index=True)
+                # Update ke sheet Abnormal
+                conn.update(spreadsheet=URL_KITA, worksheet="ABNORMAL", data=updated_df)
+
+                st.cache_data.clear()
+                if 'abnormal_data' in st.session_state:
+                    del st.session_state.abnormal_data
+                return True
+            except Exception as e:
+                st.error(f"Gagal menyimpan data abnormal: {e}")
+                return False
 
                 
     except Exception as e:
