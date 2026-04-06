@@ -709,7 +709,6 @@ else:
     # --- KONDISI: FINISHING (Input Hasil) ---
     elif status_kerja == "FINISHING":
         dp = st.session_state.get('current_part')
-        st.write("DEBUG DATA:", dp)
         if dp:
             st.subheader(f"📝 Laporan Akhir: {dp['part_name']}")
             
