@@ -584,7 +584,7 @@ else:
             
             col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("Urutan", dp['Urutan_Proses'])
-            col2.metric("Target Sec/Pcs", dp['sec_pcs'])
+            col2.metric("Target Sec/Pcs", dp['SEC/PCS'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
             col4.metric("Sudah Berjalan", f"{menit_live} Menit", delta=f"{jam_live} Jam")
             col5.metric("Actual Line", dp.get('Actual_Line', ''))
