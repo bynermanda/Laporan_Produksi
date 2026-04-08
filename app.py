@@ -68,6 +68,9 @@ st.markdown("""
         background: #990000 !important;
         transform: scale(0.98) !important;
     }
+    div.stButton > button p {
+        color: #000000 !important;
+        font-weight: bold !important;
     </style>
     """, unsafe_allow_html=True)
 
