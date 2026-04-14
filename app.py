@@ -199,7 +199,9 @@ def get_last_active_row(df, nama):
     if 'Check-Out' in df.columns:
         return None
     
-    active_rows = df[(df['Nama'] == nama) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
+    df['Nama'] = df['Nama'].astype(str).str.strip()
+    mask = df[(df['Nama'] == nama) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
+    active_rows = df[mask]
     
     if not active_rows.empty:
         # Kembalikan indeks baris terakhir (tambah 2 karena header GSheets + indeks 0)
@@ -560,7 +562,7 @@ else:
                             time.sleep(2)
                             st.rerun()
                         else:
-                            st.sidebar.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
+                            st.error("❌ Data Check-In tidak ditemukan untuk nama ini!")
             st.divider()
                  # 2. TOMBOL BACK / LOGOUT (Hanya Ganti Nama tanpa catat absen)
             if st.button("⬅️ Ganti Operator / Salah Scan Nama", use_container_width=True):
