@@ -200,14 +200,14 @@ def get_last_active_row(df, nama):
         return None
     
     nama_target = str(nama).strip()
-    kondisi_nama = df['Nama'].astype(str).str.strip() == nama_target
-    kondisi_kosong = (df['Check-Out'].isna()) | (df['Check-Out'].astype(str).str.strip() == "")
+    mask = (df['Nama'].astype(str).str.strip() == nama_target) & \
+           (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))
 
-    active_rows = df[kondisi_nama & kondisi_kosong]
+    active_rows = df[mask]
     
     if not active_rows.empty:
         # Kembalikan indeks baris terakhir (tambah 2 karena header GSheets + indeks 0)
-        return active_rows.index[-1] + 2
+        return int(active_rows.index[-1] + 2)
     return None
 
 ##--- FUNGSI BANTU: CEK PROSES AKTIF (START) UNTUK OPERATOR ---
