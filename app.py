@@ -196,7 +196,7 @@ def simpan_ke_sheet(data_dict, tipe):
 # --- FUNGSI BANTU: CARI BARIS AKTIF TERAKHIR UNTUK CHECK-IN/CHECK-OUT ---
 def get_last_active_row(df, nama):
     # Cari baris yang Namanya sama DAN kolom 'Check-Out' nya masih kosong/NaN
-    if 'Check-Out' in df.columns or 'Nama' not in df.columns:
+    if 'Check-Out' not in df.columns or 'Nama' not in df.columns:
         return None
     
     nama_target = str(nama).strip()
@@ -540,8 +540,10 @@ else:
                             idx_pd = row_idx - 2
 
                             for col in ['Check-Out', 'Total_Jam', 'Aktivitas']:
-                                if col not in df_waktu.columns:
+                                if col in df_waktu.columns:
                                     df_waktu[col] = df_waktu[col].astype(object)
+                                else:
+                                    df_waktu[col] = ""
 
                             tgl_in = df_waktu.loc[idx_pd, 'Tanggal']
                             jam_in = df_waktu.loc[idx_pd, 'Check-In']
