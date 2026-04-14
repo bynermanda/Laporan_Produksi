@@ -547,9 +547,9 @@ else:
                             total_jam_shift = round((waktu_out - dt_in).total_seconds() / 3600, 2)
 
                             # Update GSheets
-                            df_waktu.loc[idx_pd, 'Check-Out'] = waktu_out.strftime("%H:%M:%S")
-                            df_waktu.loc[idx_pd, 'Total_Jam'] = total_jam_shift
-                            df_waktu.loc[idx_pd, 'Aktivitas'] = gabungan_aktivitas
+                            df_waktu.at[idx_pd, 'Check-Out'] = waktu_out.strftime("%H:%M:%S")
+                            df_waktu.at[idx_pd, 'Total_Jam'] = total_jam_shift
+                            df_waktu.at[idx_pd, 'Aktivitas'] = gabungan_aktivitas
                             conn.update(spreadsheet=URL_KITA, worksheet="Waktu Kerja", data=df_waktu)
 
                             # Reset Sesi
