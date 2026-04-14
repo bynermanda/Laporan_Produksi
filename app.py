@@ -241,30 +241,37 @@ def handle_scan():
     if not raw_scan:
         return
 
-    # Pecah barcode (Pemisah ;)
+    # 1. Pecah barcode
     part_no_scanned = raw_scan.split(';')[0].strip()
 
-    match = main_df[main_df['Part_No'] == part_no_scanned]
+    # 2. Siapkan data Main Data dalam bentuk String (Sekali saja di atas)
+    main_df_string = main_df.copy()
+    main_df_string['Part_No'] = main_df_string['Part_No'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
     
-    if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-        match = main_df[main_df['Part_No'] == part_no_scanned]
-        # CEK: Apakah operator ini masih punya pekerjaan yang belum selesai? (Status START tapi belum FINISH)
-        # gunakan st.session_state untuk menyimpan data proses yang sedang berjalan agar tidak perlu baca ulang ke GSheets setiap kali scan
+    # Cari kecocokan di Main Data
+    match = main_df_string[main_df_string['Part_No'] == part_no_scanned]
+
+    status_sekarang = st.session_state.get('status_kerja', 'IDLE')
+
+    # --- LOGIKA 1: JIKA LAGI IDLE (Cek Recovery atau Mulai Baru) ---
+    if status_sekarang == "IDLE":
+        # A. Cek apakah ada data yang menggantung di GSheets (Recovery)
         if 'proses_data' not in st.session_state:
             st.session_state.proses_data = [conn.read(spreadsheet=URL_KITA, worksheet="Proses", ttl=0)]
+        
         df_proses = st.session_state.proses_data[0]
+        # Pastikan kolom Nama dan Status juga bersih
         ongoing = df_proses[(df_proses['Nama'] == nama_karyawan) & (df_proses['Status'] == 'START')]
-    
-        if not ongoing.empty:
 
-            if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-                row_terakhir = ongoing.iloc[-1]
-                p_no = row_terakhir['Part_No']
-        # 1. Cari standar dari Main Data
-            match_main = main_df[main_df['Part_No'] == p_no]
-            # 2. Rekonstruksi data part yang sedang dikerjakan
+        if not ongoing.empty:
+            row_terakhir = ongoing.iloc[-1]
+            p_no = str(row_terakhir['Part_No']).replace('.0', '').strip() # Paksa string
+            
+            # Cari standar untuk recovery
+            match_main = main_df_string[main_df_string['Part_No'] == p_no]
+            
             st.session_state.current_part = {
-                'part_no': row_terakhir['Part_No'],
+                'part_no': p_no,
                 'part_name': row_terakhir['Part_Name'],
                 'model': row_terakhir['Model'],
                 'urutan_proses': row_terakhir['Urutan_Proses'],
@@ -272,37 +279,38 @@ def handle_scan():
                 'line': row_terakhir['Line'],
                 'sec_pcs': match_main.iloc[0]['SEC /PCS'] if not match_main.empty else 0
             }
-            # 3. Pulihkan Waktu Start
+            
             dt_str = f"{row_terakhir['Tanggal']} {row_terakhir['Waktu_Mulai']}"
             st.session_state.waktu_start = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-            st.session_state.status_kerja = "RUNNING" # Pulihkan ke Running
+            st.session_state.status_kerja = "RUNNING"
             st.success(f"🔄 Sesi {p_no} dipulihkan!")
             st.session_state.barcode_input = ""
             st.rerun()
 
-         # Jika statusnya RUNNING, baru boleh lanjut untuk scan FINISH
-    if st.session_state.get('status_kerja') == "RUNNING":
-        if part_no_scanned == st.session_state.current_part['part_no']:
+        # B. Jika tidak ada recovery, cek apakah part yang discan ada di MainData
+        elif not match.empty:
+            st.session_state.available_processes = match.to_dict('records')
+            st.session_state.status_kerja = "SELECTING_PROCESS"
+            st.session_state.barcode_input = ""
+            st.rerun()
+        else:
+            st.error(f"❌ Part No {part_no_scanned} tidak terdaftar di Main Data!")
+            st.session_state.barcode_input = ""
+
+    # --- LOGIKA 2: JIKA LAGI RUNNING (Proses mau FINISH) ---
+    elif status_sekarang == "RUNNING":
+        # Bandingkan String vs String
+        current_p_no = str(st.session_state.current_part['part_no']).strip()
+        
+        if part_no_scanned == current_p_no:
             st.session_state.status_kerja = "FINISHING"
             st.session_state.waktu_end = get_waktu_wib()
             st.toast("🏁 Scan Finish Berhasil!")
             st.session_state.barcode_input = ""
             st.rerun()
         else:
-            st.error(f"❌ Barcode ({part_no_scanned}) berbeda dengan Part yang sedang jalan!")
+            st.error(f"❌ Barcode ({part_no_scanned}) berbeda! Part aktif: {current_p_no}")
             st.session_state.barcode_input = ""
-            return # Berhenti di sini jika salah scan part
-
-    if st.session_state.get('status_kerja', 'IDLE') == "IDLE":
-            match = main_df[main_df['Part_No'] == part_no_scanned]
-            if not match.empty:
-                st.session_state.available_processes = match.to_dict('records')
-                st.session_state.status_kerja = "SELECTING_PROCESS"
-                st.session_state.barcode_input = ""
-                st.rerun()
-            else:
-                st.error(f"❌ Part No {part_no_scanned} tidak terdaftar!")
-                st.session_state.barcode_input = ""
 
     # Kosongkan input scanner
     st.session_state.barcode_input = ""
