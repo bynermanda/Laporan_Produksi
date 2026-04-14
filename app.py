@@ -196,11 +196,11 @@ def simpan_ke_sheet(data_dict, tipe):
 # --- FUNGSI BANTU: CARI BARIS AKTIF TERAKHIR UNTUK CHECK-IN/CHECK-OUT ---
 def get_last_active_row(df, nama):
     # Cari baris yang Namanya sama DAN kolom 'Check-Out' nya masih kosong/NaN
-    if 'Check-Out' in df.columns:
+    if 'Check-Out' in df.columns or 'Nama' not in df.columns:
         return None
     
     df['Nama'] = df['Nama'].astype(str).str.strip()
-    mask = df[(df['Nama'] == nama) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
+    mask = df[((df['Nama'].astype(str).str.strip() == nama.strip()) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
     active_rows = df[mask]
     
     if not active_rows.empty:
