@@ -144,9 +144,14 @@ def simpan_ke_sheet(data_dict, tipe):
             
         elif tipe == "FINISH":
             df_proses.columns = df_proses.columns.str.strip()
+
+            kolom_angka = ['Total_Jam', 'Rasio_NG', '%_Prod', 'ACT', 'NG']
+            for col in kolom_angka:
+                if col in df_proses.columns:
+                    df_proses[col] = df_proses[col].astype(object)
             # Kita cari index baris terakhir yang dikerjakan operator ini
-            mask = (df_proses['Nama'].astype(str) == str(nama_karyawan)) & \
-                   (df_proses['Part_No'].astype(str) == str(data_dict['Part_No'])) & \
+            mask = (df_proses['Nama'].astype(str).str.strip() == str(nama_karyawan).strip()) & \
+                   (df_proses['Part_No'].astype(str).str.replace(r'\.0$', '', regex=True) == str(data_dict['Part_No']).strip()) & \
                    (df_proses['Status'] == 'START')
             
             if mask.any():
