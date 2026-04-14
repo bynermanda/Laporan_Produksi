@@ -196,7 +196,11 @@ def simpan_ke_sheet(data_dict, tipe):
 # --- FUNGSI BANTU: CARI BARIS AKTIF TERAKHIR UNTUK CHECK-IN/CHECK-OUT ---
 def get_last_active_row(df, nama):
     # Cari baris yang Namanya sama DAN kolom 'Check-Out' nya masih kosong/NaN
-    active_rows = df[(df['Nama'] == nama) & (df['Check-Out'].isna() | (df['Check-Out'] == ""))]
+    if 'Check-Out' in df.columns:
+        return None
+    
+    active_rows = df[(df['Nama'] == nama) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
+    
     if not active_rows.empty:
         # Kembalikan indeks baris terakhir (tambah 2 karena header GSheets + indeks 0)
         return active_rows.index[-1] + 2
@@ -528,6 +532,11 @@ else:
 
                         if row_idx:
                             idx_pd = row_idx - 2
+
+                            for col in ['Check-Out', 'Total_Jam', 'Aktivitas']:
+                                if col not in df_waktu.columns:
+                                    df_waktu[col] = ""
+
                             tgl_in = df_waktu.loc[idx_pd, 'Tanggal']
                             jam_in = df_waktu.loc[idx_pd, 'Check-In']
 
