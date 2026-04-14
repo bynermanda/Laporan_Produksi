@@ -199,9 +199,11 @@ def get_last_active_row(df, nama):
     if 'Check-Out' in df.columns or 'Nama' not in df.columns:
         return None
     
-    df['Nama'] = df['Nama'].astype(str).str.strip()
-    mask = df[(df['Nama'].astype(str).str.strip() == nama.strip()) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
-    active_rows = df[mask]
+    nama_target = str(nama).strip()
+    kondisi_nama = df['Nama'].astype(str).str.strip() == nama_target
+    kondisi_kosong = (df['Check-Out'].isna()) | (df['Check-Out'].astype(str).str.strip() == "")
+
+    active_rows = df[kondisi_nama & kondisi_kosong]
     
     if not active_rows.empty:
         # Kembalikan indeks baris terakhir (tambah 2 karena header GSheets + indeks 0)
@@ -532,12 +534,14 @@ else:
                         df_waktu = conn.read(spreadsheet=URL_KITA, worksheet="Waktu Kerja", ttl=0)
                         row_idx = get_last_active_row(df_waktu, nama_karyawan)
 
-                        if row_idx:
+                        st.write(f"DEBUG: Nama={nama_karyawan}, Row={row_idx}") #### DEBUG LOG
+
+                        if row_idx is not None:
                             idx_pd = row_idx - 2
 
                             for col in ['Check-Out', 'Total_Jam', 'Aktivitas']:
                                 if col not in df_waktu.columns:
-                                    df_waktu[col] = ""
+                                    df_waktu[col] = df_waktu[col].astype(object)
 
                             tgl_in = df_waktu.loc[idx_pd, 'Tanggal']
                             jam_in = df_waktu.loc[idx_pd, 'Check-In']
