@@ -200,7 +200,7 @@ def get_last_active_row(df, nama):
         return None
     
     df['Nama'] = df['Nama'].astype(str).str.strip()
-    mask = df[((df['Nama'].astype(str).str.strip() == nama.strip()) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
+    mask = df[(df['Nama'].astype(str).str.strip() == nama.strip()) & (df['Check-Out'].isna() | (df['Check-Out'].astype(str).str.strip() == ""))]
     active_rows = df[mask]
     
     if not active_rows.empty:
