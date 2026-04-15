@@ -711,6 +711,8 @@ else:
                     if simpan_ke_sheet(data_finish, "FINISH"):
                         st.session_state.data_sph_terkirim = True
                         st.success("✅ SPH Terkirim!")
+                else:
+                    st.error("⚠️ ACT harus lebih dari 0")
 
             if st.session_state.get('data_sph_terkirim'):
                 st.divider()
