@@ -131,9 +131,9 @@ if 'nik_karyawan' not in st.session_state:
     st.session_state.nik_karyawan = ""
 
 # Fungsi Membaca MainData dengan Cache
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300) # Ganti ke 5 menit untuk sementara
 def get_main_data(url):
-    df = conn.read(spreadsheet=url, worksheet="MainData", ttl=300)
+    df = conn.read(spreadsheet=url, worksheet="MainData")
     df.columns = df.columns.str.strip()
     return df
 
