@@ -15,7 +15,6 @@ components.html(
     """
     <script>
     window.parent.addEventListener('beforeunload', function (e) {
-        // Pesan standar browser (beberapa browser modern mungkin tidak menampilkan teks kustom)
         var confirmationMessage = 'Data sedang diproses. Jika refresh, sesi scan akan hilang!';
         (e || window.event).returnValue = confirmationMessage;
         return confirmationMessage;
@@ -25,56 +24,116 @@ components.html(
     height=0,
 )
 
-# Suntik CSS untuk warna
+# 2. Suntik CSS (Perhatikan perbaikan pada struktur kurung kurawal dan penghapusan tag H1 yang nyelip)
 st.markdown("""
     <style>
-    /* 1. Warna Background Utama */
+    .block-container {
+        padding-top: 1.5rem !important;
+    }
+    header {
+        visibility: hidden;
+    }
+    h1 {
+        margin-top: -10px !important;
+        padding-top: 0px !important;
+        margin-bottom: 5px !important;
+        line-height: 1.1 !important;
+    }
+    /* Warna Background Utama */
     .stApp {
         background-color: #261ad6;
     }
     
-    /* 2. Warna Sidebar */
+    /* Warna Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #ff0909;
+        background-color: #b30000;
     }
 
-    /* 3. Warna Semua Teks */
-    h1, h2, h3, p, span, label {
+    /* Warna Semua Teks agar Putih */
+    h1, h2, h3, p, span, label, .stMarkdown {
         color: #ffffff !important;
     }
+
+    /* Tombol Umum (Hijau) */
     div.stButton > button {
         background-color: #00FF00 !important;
         color: black !important;
         border-radius: 10px;
+        font-weight: bold !important;
     }
-    div.stButton > button[kind="secondary"][key="btn_reset_biru"],
+
+    /* Khusus Tombol Reset (Merah) menggunakan Key */
     div.stButton > button[key="btn_reset_biru"] {
         background: linear-gradient(45deg, #FF4444, #CC0000) !important;
         color: white !important;
         border: 2px solid #990000 !important;
         border-radius: 8px !important;
-        font-weight: bold !important;
-        transition: all 0.3s ease !important;
     }
-    div.stButton > button[kind="secondary"][key="btn_reset_biru"]:hover,
-    div.stButton > button[key="btn_reset_biru"]:hover {
-        background: linear-gradient(45deg, #CC0000, #990000) !important;
-        color: white !important;
-        transform: scale(1.05) !important;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important;
-    }
-    div.stButton > button[kind="secondary"][key="btn_reset_biru"]:active,
-    div.stButton > button[key="btn_reset_biru"]:active {
-        background: #990000 !important;
-        transform: scale(0.98) !important;
-    }
+    
+    /* Memastikan teks di dalam tombol tetap hitam (kecuali tombol reset) */
     div.stButton > button p {
-        color: #000000 !important;
+        font-size: 18px !important; 
         font-weight: bold !important;
+        color: black !important;
+    }
+    
+    /* Warna teks di dalam tombol reset agar tetap putih */
+    div.stButton > button[key="btn_reset_biru"] p {
+        color: white !important;
+        font-weight: bold !important;
+        font-size: 18px !important;
+    }
+            /* Mengatur St.write (P) */
+    div.stMarkdown p {
+        font-size: 16px !important;
+        font-weight: normal !important;
+        line-height: 1.5 !important;
+        font-family: sans-serif !important;
+    }
+    hr {
+        margin-top: 0.5rem !important;   /* Jarak atas (defaultnya besar) */
+        margin-bottom: 0.5rem !important; /* Jarak bawah */
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important; /* Warna garis tipis */
+    }
+    /* 2. Text Input agar background tetap Putih & teks tetap Hitam */
+    div[data-testid="stTextInput"] input {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important; /* Untuk Chrome/Safari Mobile */
+    }
+
+    /* 3. Paksa Number Input juga tetap Putih */
+    div[data-testid="stNumberInput"] input {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+    }
+
+    /* 4. Paksa Selectbox agar tetap Putih */
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+    }
+    
+    /* 5. Menghilangkan Border biru saat input diklik (fokus) */
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #ffffff !important;
+        box-shadow: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-if st.sidebar.button("🔄 Update Master Data"):
+# 3. Menampilkan Judul (Ini ditaruh DI LUAR st.markdown CSS)
+st.markdown(
+    """
+    <h1 style='text-align: center; font-size: 28px; margin-top: -20px; margin-bottom: 0px; line-height: 1.2;'>
+        📟 Laporan Produksi Dept. Press <br> PT Indosafety Sentosa
+    </h1>
+    
+    """, 
+    unsafe_allow_html=True
+)
+
+if st.sidebar.button("🔄 Update Data Master"):
     st.cache_data.clear()
     st.success("Data berhasil diperbarui!")
     st.rerun()
@@ -131,9 +190,9 @@ if 'nik_karyawan' not in st.session_state:
     st.session_state.nik_karyawan = ""
 
 # Fungsi Membaca MainData dengan Cache
-@st.cache_data(ttl=300) # Ganti ke 5 menit untuk sementara
+@st.cache_data(ttl=3600)
 def get_main_data(url):
-    df = conn.read(spreadsheet=url, worksheet="MainData")
+    df = conn.read(spreadsheet=url, worksheet="MainData", ttl=3600)
     df.columns = df.columns.str.strip()
     return df
 
@@ -350,8 +409,6 @@ is_sudah_checkin = st.session_state.is_sudah_checkin
 
 
 # --- TAMPILAN UTAMA ---
-st.title("📟 Laporan Produksi Department Press PT Indosafety Sentosa")
-
 # LAYAR 1: BELUM SCAN NAMA
 if not nama_karyawan:
     st.subheader("👋 Selamat Datang! Silakan Scan ID Operator")
@@ -457,7 +514,7 @@ else:
     status_kerja = st.session_state.get('status_kerja', 'IDLE')
 
     if status_kerja == "IDLE":
-        st.write(" ### 📸 Opsi 1: Scan KANBAN untuk mulai proses")
+        st.write("<span style='font-size: 18px; font-weight: bold;'> 📸 Opsi 1: Scan KANBAN untuk mulai proses</span>", unsafe_allow_html=True)
         barcode_part = qrcode_scanner(key='scanner_part_prod')
         if barcode_part:
             st.session_state.barcode_input = barcode_part
@@ -465,7 +522,7 @@ else:
 
         st.divider()
 
-        st.write("### ⌨️ Opsi 2: Input  Part No. Manual")
+        st.write("<span style='font-size: 18px; font-weight: bold;'> ⌨️ Opsi 2: Input  Part No. Manual</span>", unsafe_allow_html=True)
         manual_input = st.text_input("Ketik Part No.", key="manual_part_input").strip().upper()
         if st.button("✅ Konfirmasi Input Manual", use_container_width=True):
             if manual_input:
@@ -571,15 +628,46 @@ else:
 
     elif status_kerja == "RUNNING":
         dp = st.session_state.get('current_part')
-        
         if dp:
             waktu_sekarang = get_waktu_wib()
             durasi_live = waktu_sekarang.replace(tzinfo=None) - st.session_state.waktu_start.replace(tzinfo=None)
             menit_live = int(durasi_live.total_seconds() / 60)
             jam_live = round(durasi_live.total_seconds() / 3600, 2)
+
             st.info(f"⚡ **Proses Berjalan:** {dp['part_name']} | {dp['part_no']}")
-            
-            col1, col2, col3, col4, col5 = st.columns(5)
+
+            st.write("Konfirmasi Mulai Kerja")
+
+            ### Bagian logika START proses ####
+            if not st.session_state.get('sudah_start_diklik'):
+                if st.button("🚀 Konfirmasi Start Proses", use_container_width=True):
+                    data_start = {
+                        "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
+                        "Nama": nama_karyawan,
+                        "NIK": f"'{st.session_state.get('nik_karyawan', '-')}",
+                        "Part_No": dp['part_no'],
+                        "Part_Name": dp['part_name'],
+                        "Model": dp['model'],
+                        "Line": dp['line'],
+                        "Urutan_Proses": dp['urutan_proses'],
+                        "Actual_Line": dp.get('Actual_Line', ""),
+                        "Sec_Pcs": dp['sec_pcs'],
+                        "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
+                        "Waktu_Selesai": "",
+                        "ACT": 0, "NG": 0, "Status": "START"
+                    }
+                    if simpan_ke_sheet(data_start, "START"):
+                        st.session_state.sudah_start_diklik = True
+                        st.balloons()
+                        time.sleep(2)
+                        st.success("✅ Produksi Dimulai!")
+                        st.rerun()
+            else:
+                st.success("✅ Proses Sudah Dimulai")
+                st.info("JIKA DPMR MASUKAN JUMLAH PART OK DAN NG DI INPUT ABNORMAL!!!")
+
+            # Tampilan Metric
+            col1, col2, col3, col4, col5 = st.columns(5, gap="small")
             col1.metric("Urutan", dp['urutan_proses'])
             col2.metric("Target Sec/Pcs", dp['sec_pcs'])
             col3.metric("Mulai", st.session_state.waktu_start.strftime('%H:%M:%S'))
@@ -588,13 +676,13 @@ else:
 
             st.divider()
 
-            # --- BAGIAN BARU: INPUT ABNORMAL SAAT RUNNING ---
+            # --- BAGIAN INPUT ABNORMAL SAAT RUNNING ---
             with st.expander("⚠️ INPUT ABNORMAL", expanded=False):
                 st.write("Input akan langsung tersimpan ke database. Jika DPMR tulis OK dan NG total di Keterangan.")
                 list_kode = ["A [Ganti Proses]", "B [Ganti/Tambah Coil]", "C [Perikasa ATA]", "D [Trial]", "E [2S]", "F [Briefing Rutin]", "G1 [Material NG dan Tukar Proses]",
                             "G2 [Kualitas NG dan Tukar Proses]", "H [Tooling]", "I [Mesin Abnormal]", "K1 [Penaganan Kualitas NG]", "K2 [Penanganan dies NG]", "L [Kekurangan Material]",
                             "M [Lain-Lain]", "N [No KANBAN Plan]", "O [DPMR]"]
-                
+
                 if "ab_counter" not in st.session_state:
                     st.session_state.ab_counter = 0
 
@@ -613,7 +701,7 @@ else:
                         uraian_abnormal = parts[1].replace("]", "") if len(parts) > 1 else ""
                         row_ab = {
                             "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
-                            "Mesin": dp.get('line', ''),
+                            "Mesin": dp.get('Actual_Line', ''),
                             "Part_No": dp.get('part_no', ''),
                             "Model": dp.get('model', ''),
                             "Part_Name": dp.get('part_name', ''),
@@ -634,43 +722,14 @@ else:
 
             st.divider()
 
-            if not st.session_state.get('sudah_start_diklik'):
-                st.write("Konfirmasi Mulai Kerja")
-                if st.button("🚀 Konfirmasi Start Proses", use_container_width=True):
-                    data_start = {
-                        "Tanggal": get_waktu_wib().strftime("%Y-%m-%d"),
-                        "Nama": nama_karyawan,
-                        "NIK": f"'{st.session_state.get('nik_karyawan', '-')}",
-                        "Part_No": dp['part_no'],
-                        "Part_Name": dp['part_name'],
-                        "Model": dp['model'],
-                        "Line": dp['line'],
-                        "Urutan_Proses": dp['urutan_proses'],
-                        "Actual_Line": dp.get('Actual_Line', ""),
-                        "Sec_Pcs": dp['sec_pcs'],
-                        "Waktu_Mulai": st.session_state.waktu_start.strftime("%H:%M:%S"),
-                        "Waktu_Selesai": "",
-                        "ACT": 0, "NG": 0, "Status": "START"
-                    }
-                    if simpan_ke_sheet(data_start, "START"):
-                        st.session_state.sudah_start_diklik = True
-                        st.balloons()
-                        st.success("✅ Produksi Dimulai!")
-                        st.rerun()
-            else:
-                st.success("✅ Proses Sudah Dimulai")
-                st.info("JIKA DPMR MASUKAN JUMLAH PART OK DAN NG DI INPUT ABNORMAL!!!")
-
-            st.divider()
-
-            st.subheader("SCAN KANBAN untuk FINISH")
+            st.write("<span style='font-size: 18px; font-weight: bold;'>📸 SCAN KANBAN untuk FINISH</span>", unsafe_allow_html=True)
             barcode_data = qrcode_scanner(key='scanner_finish_part')
             if barcode_data:
                 st.session_state.barcode_input = barcode_data
                 handle_scan()
 
             st.divider()
-            st.write("### ⌨️ Input KANBAN Manual")
+            st.write("<span style='font-size: 18px; font-weight: bold;'>⌨️ Input KANBAN Manual</span>", unsafe_allow_html=True)
             manual_finish = st.text_input("Ketik Part No", key="manual_part_finish_input").strip().upper()
             if st.button("✅ Konfirmasi Input Manual Finish", use_container_width=True):
                 if manual_finish:
@@ -744,7 +803,7 @@ else:
                 st.divider()
                 st.subheader("📊 Ringkasan Hasil Produksi")
                 
-                c1, c2, c3 = st.columns(3)
+                c1, c2, c3 = st.columns(3, gap="medium")
                 c1.metric("Persentase Produksi", f"{persen_prod:.2f} %")
                 c2.metric("Total Jam Kerja", f"{round(durasi_bersih/60, 2)} Jam")
                 c3.metric("Rasio NG", f"{(ng/act * 100) if act > 0 else 0:.2f} %")
