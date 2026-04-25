@@ -4,4 +4,4 @@ st-gsheets-connection
 pytz
 gspread
 streamlit-qrcode-scanner
-oauth2client
+google-auth
