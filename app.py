@@ -892,10 +892,12 @@ else:
                         parts          = k_sel.split(" [")
                         kode_hanya     = parts[0]
                         uraian_abnormal = parts[1].replace("]", "") if len(parts) > 1 else ""
+                        waktu_sekarang = get_waktu_wib()
 
                         # Nama kolom sesuai worksheet "ABNORMAL"
                         row_ab = {
                             "Tanggal":         get_waktu_wib().strftime("%Y-%m-%d"),
+                            "Jam_Input": waktu_sekarang.strftime("%H:%M:%S"),
                             "Mesin":           dp.get('Actual_Line', ''),
                             "Part_No":         dp.get('part_no', ''),
                             "Model":           dp.get('model', ''),
